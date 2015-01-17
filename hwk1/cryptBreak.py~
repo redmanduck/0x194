@@ -57,29 +57,45 @@ def try_key(key):
 	outputtext = msg_decrypted_bv.getTextFromBitVector()            #(c)
 	return outputtext
 
-def brute(start, end):
-	bitvec = BitVector(intVal = start)
+def brute(start, end, stopflag):
+	bitvec = BitVector(intVal = int(start))
 	while(bitvec < BitVector(intVal = int(end))):
+		if(stopflag.is_set()):
+			print "other thread found the answer!"
+			break
 		bitvec = BitVector(size = BLOCKSIZE, intVal = (1 + bitvec.intValue()))
 		#print("trying " + bitvec.get_text_from_bitvector() + " #" + str(bitvec.intValue()) + " (" + str(bitvec) + ")")
 		out = try_key(bitvec.get_text_from_bitvector())
-		if(out.lower().__contains__("babe")):
+		print "iteration #" + str(bitvec.intValue())
+		print out
+		if(out.__contains__("Babe Ruth")):
+			print "found!"
 			print "key" + bitvec.get_text_from_bitvector()
-			print out
+			print "iteration " + bitvec.intValue()
+			stopflag.set()
 			break
 
+
 #parallelize bruteforce
-t1 = threading.Thread(target=brute, args=(0,MAX/3))
+
+stop_all = threading.Event()
+
+t1 = threading.Thread(target=brute, args=(0, MAX/4, stop_all))
+t2 = threading.Thread(target=brute, args=(MAX/4, MAX/2, stop_all))
+t3 = threading.Thread(target=brute, args=(MAX/2, 3*MAX/4, stop_all))
+t4 = threading.Thread(target=brute, args=(3*MAX/4, MAX, stop_all))
+
 t1.daemon = True
-t2 = threading.Thread(target=brute, args=(MAX/3,2*MAX/3))
 t2.daemon = True
-t3 = threading.Thread(target=brute, args=(2*MAX/3,MAX))
 t3.daemon = True
+t4.daemon = True
 
 t1.start()
 t2.start()
 t3.start()
+t4.start()
 
 t1.join()
 t2.join()
 t3.join()
+t4.join()
