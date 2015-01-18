@@ -12,8 +12,6 @@ from BitVector import *
 from math import pow
 import threading
 
-
-
 BLOCKSIZE = 16
 ENC = "313e3b3273096e146e5d6055655378497c5934433d43310a7b277c6e7a686621622d7e6462656f2c6120683b203d2e7435692f692c692a6762617f7c377d30783c312d37307e3a7631747b17"
 PassPhrase = "Hopes and dreams of a million years"
@@ -57,27 +55,47 @@ def try_key(key):
 	outputtext = msg_decrypted_bv.getTextFromBitVector()            #(c)
 	return outputtext
 
-def brute(start, end, stopflag):
+def brute(start, end):
 	bitvec = BitVector(intVal = int(start))
 	while(bitvec < BitVector(intVal = int(end))):
-		if(stopflag.is_set()):
-			print "other thread found the answer!"
-			break
+		#if(stopflag.is_set()):
+		#	print "other thread found the answer!"
+		#	break
 		bitvec = BitVector(size = BLOCKSIZE, intVal = (1 + bitvec.intValue()))
 		#print("trying " + bitvec.get_text_from_bitvector() + " #" + str(bitvec.intValue()) + " (" + str(bitvec) + ")")
 		out = try_key(bitvec.get_text_from_bitvector())
 		print "iteration #" + str(bitvec.intValue())
-		print out
+		#print out
 		if(out.__contains__("Babe Ruth")):
 			print "found!"
 			print "key" + bitvec.get_text_from_bitvector()
 			print "iteration " + bitvec.intValue()
-			stopflag.set()
+			#stopflag.set()
 			break
 
 
-#parallelize bruteforce
+def fastbrute(start, end):
+	b = start
+	while(b < end - 1):
+		bitvec = BitVector(size = BLOCKSIZE, intVal = b)
+		out = try_key(bitvec.get_text_from_bitvector())
+		print "iteration " + str(b)
+		#print out
+		b = b + 0b1
+		if(out.__contains__("Babe Ruth")):
+			print "found!"
+			print "key" + bitvec.get_text_from_bitvector()
+			print "iteration " + bitvec.intValue()
+			break
 
+brute(0, int(MAX))
+
+""" broken
+#iteration #26729
+Babe Ruth famously said "Do not let the fear of striking out hold you back"
+
+
+#parallelize bruteforce
 stop_all = threading.Event()
 
 t1 = threading.Thread(target=brute, args=(0, MAX/4, stop_all))
@@ -99,3 +117,4 @@ t1.join()
 t2.join()
 t3.join()
 t4.join()
+"""
