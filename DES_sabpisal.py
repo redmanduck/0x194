@@ -3,7 +3,7 @@
 ### hw2_starter.py
 
 import sys
-import BitVector
+from BitVector import *
 
 ################################   Initial setup  ################################
 
@@ -36,31 +36,46 @@ shifts_key_halvs = [1,1,2,2,2,2,2,2,1,2,2,2,2,2,2,1]
 
 # Now create your s-boxes as an array of arrays by reading the contents
 # of the file s-box-tables.txt:
-with open('s-box-tables.txt') as f:
-    arrays = ...............
-s_box = []
-for i in range(0,32, 4):
-    s_box.append([arrays[k] for k in range(i, i+4)]) # S_BOX
+
+try:
+    arrays = []
+    with open('s-box-tables.txt') as f:
+        #arrays = ...............
+        pass
+    s_box = []
+    for i in range(0,32, 4):
+        s_box.append([arrays[k] for k in range(i, i+4)]) # S_BOX
+except Exception as ex:
+    print "Unable to generate s-box" 
 
 
 
 #######################  Get encryptin key from user  ###########################
 
 def get_encryption_key(): # key                                                              
-    ## ask user for input
-
-    ## make sure it satisfies any constraints on the key
-
+    ## ask user for input ## make sure it satisfies any constraints on the key
+    user_supplied_key = ""
+    while(len(user_supplied_key) != 8):
+        user_supplied_key = raw_input("Please enter 8 character key: ")
     ## next, construct a BitVector from the key    
-    user_key_bv = BitVector(text = user-supplied_key)   
-    key_bv = user_key_bv.permute( initial_permutation )        ## permute() is a BitVector function
+
+    user_key_bv = BitVector(textstring = user_supplied_key)
+    
+    user_key_bv56 = BitVector(size = 0)
+    for i in range(8):
+        updated_bv = user_key_bv56 + user_key_bv[8*(i-1):8*(i-1)+7];
+        user_key_bv56 = updated_bv
+
+    print len(user_key_bv56)
+    key_bv = user_key_bv.permute( key_permutation_2 )        ## permute() is a BitVector function
     return key_bv
 
 
 ################################# Generatubg round keys  ########################
-def extract_round_key( nkey ): # round key                                                   
+def extract_round_key( nkey ): # round key
+    round_key = ""
     for i in range(16):
-         [left,right] = nkey.divide_into_two()   ## divide_into_two() is a BitVector function
+         [left, right] = nkey.divide_into_two()   ## divide_into_two() is a BitVector function
          ## 
          ##  the rest of the code
          ##
@@ -78,19 +93,45 @@ def des(encrypt_or_decrypt, input_file, output_file, key ):
     [LE, RE] = bitvec.divide_into_two()      
     for i in range(16):        
         ## write code to carry out 16 rounds of processing
+        R_EStep_48out = e_step(RE)
+        pass
 
 
 ## Expansion Permutation
 ## returns 48 bits block
 def e_step(RE32):
-	#divide the 32 bit blocks into eight 4-bit words
+    if(RE32.size != 32):
+        raise ValueError("Not a 32 bit value")
+    words = []
+    out = []
+    # divide the 32 bit blocks into eight 4-bit words
+    for i in range(8):
+        start = 4*(i)
+        end = start + 3
+        words.append(RE32[start:end + 1])
+        out.append(RE32[start:end + 1])
 	
-	# attach aditional bit on the LEFT of each word that is the last bit of the next word
+	# attach aditional bit on the LEFT of each word that is the last bit of the previous word
+    for i,word in enumerate(words):
+        if i-1 >= 0:
+            #prepend with the last of previous word
+            out[i] = BitVector(intVal= words[i-1][0]) +  word
+        else:
+            #prepend with the last of last word (overflow case) 
+            out[i] = BitVector(intVal= words[len(words) - 1][3]) + word 
+
 
 	# attach an additional bit to the RIGHT of each word that is the beginning of the next word
+    for i,word in enumerate(out):
+        if i+1 < len(out):
+            #append with the beginning of next word
+            out[i] = word + BitVector(intVal= words[i+1][0])
+        else:
+            #append with the beginning of first word (overflow case) 
+            out[i] = word + BitVector(intVal= words[0][0])
 
-def xor(a, b):
-	pass
+    return out
+
 
 def substitute(XRE48):
 	pass
@@ -98,12 +139,21 @@ def substitute(XRE48):
 def permute(XRE48):
 	pass
 
+
+
 #################################### main #######################################
 
+def test_estep():
+    bv = BitVector(intVal = 2147483698)
+    print str(bv)
+    R = e_step(bv)
+    for bit in R:
+        print str(bit)
 def main():
     ## write code that prompts the user for the key
     ## and then invokes the functionality of your implementation
-
+    v = get_encryption_key()
+    print str(v)
 
 if __name__ == "__main__":
     main()
