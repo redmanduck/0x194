@@ -37,12 +37,12 @@ shifts_key_halvs = [1,1,2,2,2,2,2,2,1,2,2,2,2,2,2,1]
 # Now create your s-boxes as an array of arrays by reading the contents
 # of the file s-box-tables.txt:
 
+s_box = []
 try:
     arrays = []
     with open('s-box-tables.txt') as f:
         #arrays = ...............
         pass
-    s_box = []
     for i in range(0,32, 4):
         s_box.append([arrays[k] for k in range(i, i+4)]) # S_BOX
 except Exception as ex:
@@ -53,34 +53,47 @@ except Exception as ex:
 #######################  Get encryptin key from user  ###########################
 
 def get_encryption_key(): # key                                                              
-    ## ask user for input ## make sure it satisfies any constraints on the key
+    ## ask user for input and make sure it satisfies any constraints on the key
     user_supplied_key = ""
     while(len(user_supplied_key) != 8):
         user_supplied_key = raw_input("Please enter 8 character key: ")
-    ## next, construct a BitVector from the key    
 
+    ## construct a bit vector (64 bit)
     user_key_bv = BitVector(textstring = user_supplied_key)
     
+    # initial permutation 64 bit key
+    key_bv = user_key_bv.permute( key_permutation_1 )        ## permute() is a BitVector function
+    return key_bv
+
+
+################################# Generatubg round keys  ########################
+
+"""
+    are round Key (Ki) for each round, i, different?
+"""
+def extract_round_key( nkey ): # round key
+    print "Extracting Round Keys"
+    roundkeys = []
+    for i in range(16):
+         [left, right] = nkey.divide_into_two()   ## divide_into_two() is a BitVector function
+         left << shifts_key_halvs[i]
+         right << shifts_key_halvs[i]
+         rejoined_key_bv = left + right
+         nkey = rejoined_key_bv  # the two halves go into next round
+         roundkeys.append(rejoined_key_bv.permute(key_permutation_2))
+         
+    return roundkeys
+
+
+def kill_parity():
+    ## get rid of the parity bit at the end of each byte
     user_key_bv56 = BitVector(size = 0)
     for i in range(8):
         updated_bv = user_key_bv56 + user_key_bv[8*(i-1):8*(i-1)+7];
         user_key_bv56 = updated_bv
 
-    print len(user_key_bv56)
-    key_bv = user_key_bv.permute( key_permutation_2 )        ## permute() is a BitVector function
-    return key_bv
 
-
-################################# Generatubg round keys  ########################
-def extract_round_key( nkey ): # round key
-    round_key = ""
-    for i in range(16):
-         [left, right] = nkey.divide_into_two()   ## divide_into_two() is a BitVector function
-         ## 
-         ##  the rest of the code
-         ##
-    return round_key
-
+    print "Key Length: "+ str(len(user_key_bv56))
 
 ########################## encryption and decryption #############################
 
@@ -91,15 +104,20 @@ def des(encrypt_or_decrypt, input_file, output_file, key ):
     bitvec = bv.read_bits_from_file( 64 )   ## assumes that your file has an integral
                                             ## multiple of 8 bytes. If not, you must pad it.
     [LE, RE] = bitvec.divide_into_two()      
+    userkey = get_encryption_key()
+    roundkeys = extract_round_key(userkey)
+
     for i in range(16):        
         ## write code to carry out 16 rounds of processing
-        R_EStep_48out = e_step(RE)
-        pass
-
+        R_EStep48 = e_step(RE)
+        mixed_key48 = R_EStep48 ^ roundkeys[i]
+        R_sub32 = substitution_step(s_box, mixed_key48)
+        R_perm32 = permutation_step(p_box_permutation, R_sub32)
 
 ## Expansion Permutation
 ## returns 48 bits block
 def e_step(RE32):
+    print "Performing Expansion Permutation Step"
     if(RE32.size != 32):
         raise ValueError("Not a 32 bit value")
     words = []
@@ -133,13 +151,20 @@ def e_step(RE32):
     return out
 
 
-def substitute(XRE48):
+def substitution_step(SBOX, XRE48):
+	print "Performing Substitution Step"
+
+def permutation_step(XRE48):
 	pass
 
-def permute(XRE48):
-	pass
 
-
+def get_estep_output48(padded_blocklist):
+    bv = BitVector(size = 0)
+    for block in padded_blocklist:
+        bv = bv + BitVector(bitstring = str(block))
+    if(bv.size != 48):
+        raise ValueError("Output of estep is not 48 bit!")
+    return bv
 
 #################################### main #######################################
 
@@ -147,13 +172,29 @@ def test_estep():
     bv = BitVector(intVal = 2147483698)
     print str(bv)
     R = e_step(bv)
+
     for bit in R:
         print str(bit)
+
+    xp48 = get_estep_output48(R)
+    print xp48
+
+def test_roundkey(uv):
+    rk = extract_round_key(uv)
+    for i,r in enumerate(rk):
+        print "Round " + str(i), r , " size ", len(r)
+
+def test_userkey():
+    v = get_encryption_key()
+    print "Your Key: " + str(v)
+    return v
+
 def main():
     ## write code that prompts the user for the key
     ## and then invokes the functionality of your implementation
-    v = get_encryption_key()
-    print str(v)
+    ukey = test_userkey()
+    test_roundkey(ukey)
+    test_estep()
 
 if __name__ == "__main__":
     main()
