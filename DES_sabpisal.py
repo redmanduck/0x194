@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-### hw2_starter.py
+### DES
 
 import sys
 from BitVector import *
@@ -93,7 +93,6 @@ def extract_round_key( nkey ): # round key
          rejoined_key_bv = left + right
          nkey = rejoined_key_bv  # the two halves go into next round
          roundkeys.append(rejoined_key_bv.permute(key_permutation_2))
-         
     return roundkeys
 
 
@@ -109,20 +108,25 @@ def des(encrypt_or_decrypt, input_file, output_file, key ):
     [LE, RE] = bitvec.divide_into_two()      
     roundkeys = extract_round_key(key)
 
+    print LE, RE
+
     for i in range(16):        
+        print "Processing DES Fiestel Round #", i
         ## write code to carry out 16 rounds of processing
         R_EStep48_L = e_step(RE)
         R_EStep48 = get_estep_output48(R_EStep48_L)
         rkey = roundkeys[i]
         mixed_key48 = R_EStep48 ^ rkey
         R_sub32 = substitution_step(s_box, mixed_key48)
-        print "Substitution gave out", R_sub32.size, "bits", str(R_sub32)
+        #print "Substitution gave out", R_sub32.size, "bits", str(R_sub32)
         R_perm32 = permutation_step(p_box_permutation, R_sub32)
-        print "Permutationn gave out", R_perm32.size, "bits", str(R_perm32)
+        #print "Permutationn gave out", R_perm32.size, "bits", str(R_perm32)
 
         old_RE = RE
         RE = R_perm32 ^ LE
         LE = old_RE
+
+        print LE, RE
 
     ciphertext = LE + RE
     print "Plain Text", bitvec.size, " bits: " , bitvec.get_text_from_bitvector()
@@ -130,10 +134,12 @@ def des(encrypt_or_decrypt, input_file, output_file, key ):
     print "Base64 Cipher Text", base64.b64encode(ciphertext.get_text_from_bitvector())
     print "Hex Cipher Text", ciphertext.get_hex_string_from_bitvector()
 
+    return ciphertext
+
 ## Expansion Permutation
 ## returns 48 bits block
 def e_step(RE32):
-    print "Performing Expansion Permutation Step"
+    #print "Performing Expansion Permutation Step"
     if(RE32.size != 32):
         raise ValueError("Not a 32 bit value")
     words = []
@@ -171,11 +177,11 @@ def e_step(RE32):
 def substitution_step(SBOX, XRE48):
     sub32out = BitVector(size = 0)
     for i in range(len(SBOX)):
-        print "Performing Substitution Step BOX ", i
-        print "With 48 bits input", XRE48
+        #print "Performing Substitution Step BOX ", i
+        #print "With 48 bits input", XRE48
         row_index = BitVector(bitstring=(str(XRE48[6*i]) + str(XRE48[6*i + 5]))) #two outer bits
         col_index = XRE48[6*i + 1 : (6*i + 5)] #four inner bits
-        print "Box value", SBOX[i][row_index.int_val()][col_index.int_val()]
+        #print "Box value", SBOX[i][row_index.int_val()][col_index.int_val()]
         fourbit_out = BitVector(size=4,intVal=SBOX[i][row_index.int_val()][col_index.int_val()])
         sub32out = sub32out + fourbit_out
     return sub32out
