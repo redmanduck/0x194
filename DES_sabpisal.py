@@ -5,7 +5,7 @@
 import sys
 from BitVector import *
 import re
-
+import base64
 ################################   Initial setup  ################################
 
 # Expansion permutation (See Section 3.3.1):
@@ -113,10 +113,22 @@ def des(encrypt_or_decrypt, input_file, output_file, key ):
         ## write code to carry out 16 rounds of processing
         R_EStep48_L = e_step(RE)
         R_EStep48 = get_estep_output48(R_EStep48_L)
-        rkey = BitVector(intVal = 55)
+        rkey = roundkeys[i]
         mixed_key48 = R_EStep48 ^ rkey
         R_sub32 = substitution_step(s_box, mixed_key48)
+        print "Substitution gave out", R_sub32.size, "bits", str(R_sub32)
         R_perm32 = permutation_step(p_box_permutation, R_sub32)
+        print "Permutationn gave out", R_perm32.size, "bits", str(R_perm32)
+
+        old_RE = RE
+        RE = R_perm32 ^ LE
+        LE = old_RE
+
+    ciphertext = LE + RE
+    print "Plain Text", bitvec.size, " bits: " , bitvec.get_text_from_bitvector()
+    print "Cipher Text", ciphertext.size, " bits :", ciphertext.get_text_from_bitvector()
+    print "Base64 Cipher Text", base64.b64encode(ciphertext.get_text_from_bitvector())
+    print "Hex Cipher Text", ciphertext.get_hex_string_from_bitvector()
 
 ## Expansion Permutation
 ## returns 48 bits block
@@ -137,7 +149,7 @@ def e_step(RE32):
     for i,word in enumerate(words):
         if i-1 >= 0:
             #prepend with the last of previous word
-            out[i] = BitVector(intVal= words[i-1][0]) +  word
+            out[i] = BitVector(intVal= words[i-1][3]) +  word
         else:
             #prepend with the last of last word (overflow case) 
             out[i] = BitVector(intVal= words[len(words) - 1][3]) + word 
@@ -157,19 +169,20 @@ def e_step(RE32):
 
 ## Substitution step enhance diffusion
 def substitution_step(SBOX, XRE48):
-    print "Performing Substitution Step"
+    sub32out = BitVector(size = 0)
     for i in range(len(SBOX)):
         print "Performing Substitution Step BOX ", i
-        print XRE48
+        print "With 48 bits input", XRE48
         row_index = BitVector(bitstring=(str(XRE48[6*i]) + str(XRE48[6*i + 5]))) #two outer bits
         col_index = XRE48[6*i + 1 : (6*i + 5)] #four inner bits
-        print SBOX[i][row_index.int_val()][col_index.int_val()]
+        print "Box value", SBOX[i][row_index.int_val()][col_index.int_val()]
         fourbit_out = BitVector(size=4,intVal=SBOX[i][row_index.int_val()][col_index.int_val()])
-        print str(fourbit_out)
-    return None
+        sub32out = sub32out + fourbit_out
+    return sub32out
 
-def permutation_step(PBOX, XRE48):
-	return XRE48
+def permutation_step(PBOX, XRE32):
+    XRE32 = XRE32.permute(p_box_permutation)
+    return XRE32
 
 
 def get_estep_output48(padded_blocklist):
@@ -177,13 +190,13 @@ def get_estep_output48(padded_blocklist):
     for block in padded_blocklist:
         bv = bv + BitVector(bitstring = str(block))
     if(bv.size != 48):
-        raise ValueError("Output of estep is not 48 bit!")
+        raise ValueError("Output of E-step is not 48 bit!")
     return bv
 
 #################################### main #######################################
 
 def test_estep():
-    bv = BitVector(intVal = 2147483698)
+    bv = BitVector(size=32, intVal = 2147483698)
     print str(bv)
     R = e_step(bv)
 
@@ -194,19 +207,22 @@ def test_estep():
     print xp48
 
 def test_roundkey(uv):
+    print
+    print "User Key", str(uv), "length", uv.size
     rk = extract_round_key(uv)
     for i,r in enumerate(rk):
-        print "Round " + str(i), r , " size ", len(r)
+        print "Round " + str(i), r , " size ", len(r), "ascii", r.get_text_from_bitvector()
 
 def test_userkey():
     v = get_encryption_key()
-    print "Your Key: " + str(v)
+    print "Your Key: " + str(v), v.size, "bits"
     return v
 
 
 def main():
     ## write code that prompts the user for the key
     ## and then invokes the functionality of your implementation
+
     userkey = get_encryption_key()
     des(None, "peter.txt", "temp", userkey)
 
