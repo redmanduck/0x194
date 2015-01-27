@@ -1,9 +1,10 @@
-#!/usr/bin/env/python
-
+#!/usr/bin/python
+#
 ### hw2_starter.py
 
 import sys
 from BitVector import *
+import re
 
 ################################   Initial setup  ################################
 
@@ -40,13 +41,24 @@ shifts_key_halvs = [1,1,2,2,2,2,2,2,1,2,2,2,2,2,2,1]
 s_box = []
 try:
     arrays = []
+    regex = re.compile("([0-9]+\s+)+")
     with open('s-box-tables.txt') as f:
-        #arrays = ...............
-        pass
+        for line in f:
+            result = regex.search(line)
+            if result is not None:
+                cand = result.group(0)
+                lst = re.compile("\s+").split(cand)
+                del lst[len(lst) -1]
+                arrays.append(lst)
+                for j,item in enumerate(lst):
+                    lst[j] = int(lst[j])
+
     for i in range(0,32, 4):
-        s_box.append([arrays[k] for k in range(i, i+4)]) # S_BOX
+       s_box.append([arrays[k] for k in range(i, i+4)]) # S_BOX
+
 except Exception as ex:
-    print "Unable to generate s-box" 
+    print ex
+    raise Exception("Unable to read S-BOX. Is it in correct format ?")
 
 
 
@@ -85,32 +97,24 @@ def extract_round_key( nkey ): # round key
     return roundkeys
 
 
-def kill_parity():
-    ## get rid of the parity bit at the end of each byte
-    user_key_bv56 = BitVector(size = 0)
-    for i in range(8):
-        updated_bv = user_key_bv56 + user_key_bv[8*(i-1):8*(i-1)+7];
-        user_key_bv56 = updated_bv
-
-
-    print "Key Length: "+ str(len(user_key_bv56))
-
 ########################## encryption and decryption #############################
 
 def des(encrypt_or_decrypt, input_file, output_file, key ): 
     bv = BitVector( filename = input_file ) 
     FILEOUT = open( output_file, 'wb' ) 
     bv = BitVector( filename = input_file )
+
     bitvec = bv.read_bits_from_file( 64 )   ## assumes that your file has an integral
                                             ## multiple of 8 bytes. If not, you must pad it.
     [LE, RE] = bitvec.divide_into_two()      
-    userkey = get_encryption_key()
-    roundkeys = extract_round_key(userkey)
+    roundkeys = extract_round_key(key)
 
     for i in range(16):        
         ## write code to carry out 16 rounds of processing
-        R_EStep48 = e_step(RE)
-        mixed_key48 = R_EStep48 ^ roundkeys[i]
+        R_EStep48_L = e_step(RE)
+        R_EStep48 = get_estep_output48(R_EStep48_L)
+        rkey = BitVector(intVal = 55)
+        mixed_key48 = R_EStep48 ^ rkey
         R_sub32 = substitution_step(s_box, mixed_key48)
         R_perm32 = permutation_step(p_box_permutation, R_sub32)
 
@@ -126,8 +130,8 @@ def e_step(RE32):
     for i in range(8):
         start = 4*(i)
         end = start + 3
-        words.append(RE32[start:end + 1])
-        out.append(RE32[start:end + 1])
+        words.append(RE32[start:(end + 1)])
+        out.append(RE32[start:(end + 1)])
 	
 	# attach aditional bit on the LEFT of each word that is the last bit of the previous word
     for i,word in enumerate(words):
@@ -151,11 +155,21 @@ def e_step(RE32):
     return out
 
 
+## Substitution step enhance diffusion
 def substitution_step(SBOX, XRE48):
-	print "Performing Substitution Step"
+    print "Performing Substitution Step"
+    for i in range(len(SBOX)):
+        print "Performing Substitution Step BOX ", i
+        print XRE48
+        row_index = BitVector(bitstring=(str(XRE48[6*i]) + str(XRE48[6*i + 5]))) #two outer bits
+        col_index = XRE48[6*i + 1 : (6*i + 5)] #four inner bits
+        print SBOX[i][row_index.int_val()][col_index.int_val()]
+        fourbit_out = BitVector(size=4,intVal=SBOX[i][row_index.int_val()][col_index.int_val()])
+        print str(fourbit_out)
+    return None
 
-def permutation_step(XRE48):
-	pass
+def permutation_step(PBOX, XRE48):
+	return XRE48
 
 
 def get_estep_output48(padded_blocklist):
@@ -189,12 +203,12 @@ def test_userkey():
     print "Your Key: " + str(v)
     return v
 
+
 def main():
     ## write code that prompts the user for the key
     ## and then invokes the functionality of your implementation
-    ukey = test_userkey()
-    test_roundkey(ukey)
-    test_estep()
+    userkey = get_encryption_key()
+    des(None, "peter.txt", "temp", userkey)
 
 if __name__ == "__main__":
     main()
