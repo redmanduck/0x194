@@ -32,6 +32,8 @@ key_permutation_2 = [13,16,10,23,0,4,2,27,14,5,20,9,22,18,11,3,25,
 shifts_key_halvs = [1,1,2,2,2,2,2,2,1,2,2,2,2,2,2,1] 
 
 
+MODE_ENC = 1
+MODE_DEC = 2
 
 ###################################   S-boxes  ##################################
 
@@ -99,6 +101,15 @@ def extract_round_key( nkey ): # round key
 ########################## encryption and decryption #############################
 
 def des(encrypt_or_decrypt, input_file, output_file, key ): 
+
+    DECRYPT = False
+    if(encrypt_or_decrypt == MODE_DEC):
+        print "Decrypting"
+        DECRYPT = True
+    else:
+        DECRYPT = False
+        print "Encrypting"
+
     bv = BitVector( filename = input_file ) 
     FILEOUT = open( output_file, 'wb' ) 
     bv = BitVector( filename = input_file )
@@ -107,6 +118,12 @@ def des(encrypt_or_decrypt, input_file, output_file, key ):
                                             ## multiple of 8 bytes. If not, you must pad it.
     [LE, RE] = bitvec.divide_into_two()      
     roundkeys = extract_round_key(key)
+
+    if(DECRYPT): 
+        roundkeys.reverse()
+        temp = LE
+        LE = RE
+        RE = temp
 
     print LE, RE
 
@@ -128,13 +145,21 @@ def des(encrypt_or_decrypt, input_file, output_file, key ):
 
         print LE, RE
 
-    ciphertext = LE + RE
-    print "Plain Text", bitvec.size, " bits: " , bitvec.get_text_from_bitvector()
-    print "Cipher Text", ciphertext.size, " bits :", ciphertext.get_text_from_bitvector()
-    print "Base64 Cipher Text", base64.b64encode(ciphertext.get_text_from_bitvector())
-    print "Hex Cipher Text", ciphertext.get_hex_string_from_bitvector()
+    finaltext = LE + RE
+    if(DECRYPT): 
+        finaltext = RE + LE
 
-    return ciphertext
+    print "Plain Text", bitvec.size, " bits: " , bitvec.get_text_from_bitvector()
+    print "Plain Text", bitvec.size, " bits: " , bitvec
+    print "Cipher Text", finaltext.size, " bits :", finaltext.get_text_from_bitvector()
+    print "Base64 Cipher Text", base64.b64encode(finaltext.get_text_from_bitvector())
+    print "Hex Cipher Text", finaltext.get_hex_string_from_bitvector()
+    print "Final Out ", finaltext.size, " bits: " , finaltext
+
+    finaltext.write_to_file(FILEOUT)
+    FILEOUT.close()
+
+    return finaltext
 
 ## Expansion Permutation
 ## returns 48 bits block
@@ -230,7 +255,8 @@ def main():
     ## and then invokes the functionality of your implementation
 
     userkey = get_encryption_key()
-    des(None, "peter.txt", "temp", userkey)
+    des(MODE_ENC, "peter.txt", "peter.enc", userkey)
+    des(MODE_DEC, "peter.enc", "peter.dec", userkey)
 
 if __name__ == "__main__":
     main()
