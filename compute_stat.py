@@ -3,7 +3,19 @@
 ### Compute Diffusion and Confusion
 
 import sys
-from DES_sabpisal import *
+import DES_sabpisal as DESS
+import random
+from BitVector import *
+
+def randomly_generate_sbox(fname):
+	f  = open(fname, "w")
+	for box in range(8):
+		for col in range(4):
+			for row in range(16):
+				f.write(str(random.randrange(0,15)) + " ")
+			f.write("\n")
+		f.write("\n")
+	f.close()
 
 def invert(num):
 	if(num == 0):
@@ -13,8 +25,9 @@ def invert(num):
 def main():
     ## write code that prompts the user for the key
     ## and then invokes the functionality of your implementation
+    
 
-    userkey = get_encryption_key()
+    userkey = DESS.get_encryption_key()
 
     original = "peter.txt"
     original_diffuse = "peter2.txt"
@@ -22,7 +35,7 @@ def main():
     f0 = open(original, "rb")
     bv1 = BitVector(textstring = f0.read())
 
-    for j in range(64):
+    for j in range(1):
     	#how many bit to change
     	bv1[j] = invert(bv1[j]);
 
@@ -31,16 +44,36 @@ def main():
     f.close()
     f0.close()
 
-    a1 = des(None, original, "temp", userkey)
-    a2 = des(None, original_diffuse, "temp", userkey)
+    a1 = DESS.des(DESS.MODE_ENC, original, "temp", userkey)
+    a2 = DESS.des(DESS.MODE_ENC, original_diffuse, "temp", userkey)
 
-    print "A1: ", a1
-    print "A2: ", a2
+
+    print "================= WITH PROVIDED S-BOX ===================="
+    print "Cipher Text (original plain text): ", a1
+    print "Cipher Text (plain text 1 bit changed): ", a2
 
     diff = a1 ^ a2
-    print "Diff: ", diff
+
     print "Bits Different: ", diff.count_bits()
     print "Percent Diffusion: ", 100*diff.count_bits()/64.00
+
+    print "================ WITH DIFFERENT S-BOX ==================="
+    randomly_generate_sbox("s-box-generated.txt")
+
+    DESS.populate_sbox("s-box-generated.txt")
+
+    a1 = DESS.des(DESS.MODE_ENC, original, "temp", userkey)
+    a2 = DESS.des(DESS.MODE_ENC, original_diffuse, "temp", userkey)
+
+    print "Cipher Text (original plain text): ", a1
+    print "Cipher Text (plain text 1 bit changed): ", a2
+
+    diff = a1 ^ a2
+
+    print "Bits Different: ", diff.count_bits()
+    print "Percent Diffusion: ", 100*diff.count_bits()/64.00
+
+    print "====================================="
 
 if __name__ == "__main__":
     main()

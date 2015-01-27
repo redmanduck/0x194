@@ -41,10 +41,11 @@ MODE_DEC = 2
 # of the file s-box-tables.txt:
 
 s_box = []
-try:
+
+def populate_sbox(filename):
     arrays = []
     regex = re.compile("([0-9]+\s+)+")
-    with open('s-box-tables.txt') as f:
+    with open(filename) as f:
         for line in f:
             result = regex.search(line)
             if result is not None:
@@ -54,15 +55,11 @@ try:
                 arrays.append(lst)
                 for j,item in enumerate(lst):
                     lst[j] = int(lst[j])
-
+    s_box[:] = []
     for i in range(0,32, 4):
        s_box.append([arrays[k] for k in range(i, i+4)]) # S_BOX
 
-except Exception as ex:
-    print ex
-    raise Exception("Unable to read S-BOX. Is it in correct format ?")
-
-
+populate_sbox("s-box-tables.txt")
 
 #######################  Get encryptin key from user  ###########################
 
@@ -86,7 +83,7 @@ def get_encryption_key(): # key
     are round Key (Ki) for each round, i, different?
 """
 def extract_round_key( nkey ): # round key
-    print "Extracting Round Keys"
+    # print "Extracting Round Keys"
     roundkeys = []
     for i in range(16):
          [left, right] = nkey.divide_into_two()   ## divide_into_two() is a BitVector function
@@ -104,11 +101,11 @@ def des(encrypt_or_decrypt, input_file, output_file, key ):
 
     DECRYPT = False
     if(encrypt_or_decrypt == MODE_DEC):
-        print "Decrypting"
+        # print "Decrypting"
         DECRYPT = True
     else:
         DECRYPT = False
-        print "Encrypting"
+        # print "Encrypting"
 
     bv = BitVector( filename = input_file ) 
     FILEOUT = open( output_file, 'wb' ) 
@@ -125,10 +122,10 @@ def des(encrypt_or_decrypt, input_file, output_file, key ):
         LE = RE
         RE = temp
 
-    print LE, RE
+    # print LE, RE
 
     for i in range(16):        
-        print "Processing DES Fiestel Round #", i
+        # print "Processing DES Fiestel Round #", i
         ## write code to carry out 16 rounds of processing
         R_EStep48_L = e_step(RE)
         R_EStep48 = get_estep_output48(R_EStep48_L)
@@ -143,18 +140,18 @@ def des(encrypt_or_decrypt, input_file, output_file, key ):
         RE = R_perm32 ^ LE
         LE = old_RE
 
-        print LE, RE
+        # print LE, RE
 
     finaltext = LE + RE
     if(DECRYPT): 
         finaltext = RE + LE
 
-    print "Plain Text", bitvec.size, " bits: " , bitvec.get_text_from_bitvector()
-    print "Plain Text", bitvec.size, " bits: " , bitvec
-    print "Cipher Text", finaltext.size, " bits :", finaltext.get_text_from_bitvector()
-    print "Base64 Cipher Text", base64.b64encode(finaltext.get_text_from_bitvector())
-    print "Hex Cipher Text", finaltext.get_hex_string_from_bitvector()
-    print "Final Out ", finaltext.size, " bits: " , finaltext
+    # print "Plain Text", bitvec.size, " bits: " , bitvec.get_text_from_bitvector()
+    # print "Plain Text", bitvec.size, " bits: " , bitvec
+    # print "Cipher Text", finaltext.size, " bits :", finaltext.get_text_from_bitvector()
+    # print "Base64 Cipher Text", base64.b64encode(finaltext.get_text_from_bitvector())
+    # print "Hex Cipher Text", finaltext.get_hex_string_from_bitvector()
+    # print "Final Out ", finaltext.size, " bits: " , finaltext
 
     finaltext.write_to_file(FILEOUT)
     FILEOUT.close()
