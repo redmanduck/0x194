@@ -32,8 +32,8 @@ key_permutation_2 = [13,16,10,23,0,4,2,27,14,5,20,9,22,18,11,3,25,
 shifts_key_halvs = [1,1,2,2,2,2,2,2,1,2,2,2,2,2,2,1] 
 
 
-MODE_ENC = 1
-MODE_DEC = 2
+MODE_ENC = 1 # pass this literal to des function to encrypt
+MODE_DEC = 2 # or to decrypt
 
 ###################################   S-boxes  ##################################
 
@@ -41,7 +41,9 @@ MODE_DEC = 2
 # of the file s-box-tables.txt:
 
 s_box = []
-
+##
+##  Populate SBOX array from file
+##
 def populate_sbox(filename):
     arrays = []
     regex = re.compile("([0-9]+\s+)+")
@@ -78,10 +80,10 @@ def get_encryption_key(): # key
 
 
 ################################# Generatubg round keys  ########################
-
-"""
-    are round Key (Ki) for each round, i, different?
-"""
+##
+# Get Round Keys, 
+# @returns list of 16 keys indexed by Round 0 - 15 
+#
 def extract_round_key( nkey ): # round key
     # print "Extracting Round Keys"
     roundkeys = []
@@ -158,8 +160,11 @@ def des(encrypt_or_decrypt, input_file, output_file, key ):
 
     return finaltext
 
-## Expansion Permutation
+## Expansion Permutation (E-step)
+## 
+## given a 32 bits block
 ## returns 48 bits block
+##
 def e_step(RE32):
     #print "Performing Expansion Permutation Step"
     if(RE32.size != 32):
@@ -212,7 +217,10 @@ def permutation_step(PBOX, XRE32):
     XRE32 = XRE32.permute(p_box_permutation)
     return XRE32
 
-
+##
+## Since E-Step function returns list of nibble words
+## this function concatnates them and return one bitvector of size 48
+## 
 def get_estep_output48(padded_blocklist):
     bv = BitVector(size = 0)
     for block in padded_blocklist:
@@ -223,28 +231,28 @@ def get_estep_output48(padded_blocklist):
 
 #################################### main #######################################
 
-def test_estep():
-    bv = BitVector(size=32, intVal = 2147483698)
-    print str(bv)
-    R = e_step(bv)
+# def test_estep():
+#     bv = BitVector(size=32, intVal = 2147483698)
+#     print str(bv)
+#     R = e_step(bv)
 
-    for bit in R:
-        print str(bit)
+#     for bit in R:
+#         print str(bit)
 
-    xp48 = get_estep_output48(R)
-    print xp48
+#     xp48 = get_estep_output48(R)
+#     print xp48
 
-def test_roundkey(uv):
-    print
-    print "User Key", str(uv), "length", uv.size
-    rk = extract_round_key(uv)
-    for i,r in enumerate(rk):
-        print "Round " + str(i), r , " size ", len(r), "ascii", r.get_text_from_bitvector()
+# def test_roundkey(uv):
+#     print
+#     print "User Key", str(uv), "length", uv.size
+#     rk = extract_round_key(uv)
+#     for i,r in enumerate(rk):
+#         print "Round " + str(i), r , " size ", len(r), "ascii", r.get_text_from_bitvector()
 
-def test_userkey():
-    v = get_encryption_key()
-    print "Your Key: " + str(v), v.size, "bits"
-    return v
+# def test_userkey():
+#     v = get_encryption_key()
+#     print "Your Key: " + str(v), v.size, "bits"
+#     return v
 
 
 def main():
