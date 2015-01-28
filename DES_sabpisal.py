@@ -2,7 +2,7 @@
 #
 ### DES
 
-import sys
+import sys, os
 from BitVector import *
 import re
 import base64
@@ -67,9 +67,12 @@ populate_sbox("s-box-tables.txt")
 
 def get_encryption_key(): # key                                                              
     ## ask user for input and make sure it satisfies any constraints on the key
-    user_supplied_key = ""
-    while(len(user_supplied_key) != 8):
-        user_supplied_key = raw_input("Please enter 8 character key: ")
+    f = open("key.txt", "r")
+    user_supplied_key = f.read()
+    print "Using Key:", user_supplied_key
+    if(len(user_supplied_key) != 8):
+        print "Provided Key is not valid"
+        sys.exit(1)
 
     ## construct a bit vector (64 bit)
     user_key_bv = BitVector(textstring = user_supplied_key)
@@ -100,62 +103,68 @@ def extract_round_key( nkey ): # round key
 ########################## encryption and decryption #############################
 
 def des(encrypt_or_decrypt, input_file, output_file, key ): 
-
+    last_round = False
     DECRYPT = False
     if(encrypt_or_decrypt == MODE_DEC):
-        # print "Decrypting"
+        print "Decrypting..."
         DECRYPT = True
     else:
         DECRYPT = False
-        # print "Encrypting"
+        print "Encrypting..."
 
     bv = BitVector( filename = input_file ) 
     FILEOUT = open( output_file, 'wb' ) 
     bv = BitVector( filename = input_file )
 
-    bitvec = bv.read_bits_from_file( 64 )   ## assumes that your file has an integral
-                                            ## multiple of 8 bytes. If not, you must pad it.
-    [LE, RE] = bitvec.divide_into_two()      
-    roundkeys = extract_round_key(key)
+    while not last_round:
+        bitvec = bv.read_bits_from_file( 64 )   ## assumes that your file has an integral
+                                                ## multiple of 8 bytes. If not, you must pad it.
+        if bitvec.size < 64:
+            if(bitvec.size == 0):
+                return 
+            bitvec.pad_from_right(64 - bitvec.size)
+            last_round = True
+        [LE, RE] = bitvec.divide_into_two()      
+        roundkeys = extract_round_key(key)
 
-    if(DECRYPT): 
-        roundkeys.reverse()
-        temp = LE
-        LE = RE
-        RE = temp
-
-    # print LE, RE
-
-    for i in range(16):        
-        # print "Processing DES Fiestel Round #", i
-        ## write code to carry out 16 rounds of processing
-        R_EStep48_L = e_step(RE)
-        R_EStep48 = get_estep_output48(R_EStep48_L)
-        rkey = roundkeys[i]
-        mixed_key48 = R_EStep48 ^ rkey
-        R_sub32 = substitution_step(s_box, mixed_key48)
-        #print "Substitution gave out", R_sub32.size, "bits", str(R_sub32)
-        R_perm32 = permutation_step(p_box_permutation, R_sub32)
-        #print "Permutationn gave out", R_perm32.size, "bits", str(R_perm32)
-
-        old_RE = RE
-        RE = R_perm32 ^ LE
-        LE = old_RE
+        if(DECRYPT): 
+            roundkeys.reverse()
+            temp = LE
+            LE = RE
+            RE = temp
 
         # print LE, RE
 
-    finaltext = LE + RE
-    if(DECRYPT): 
-        finaltext = RE + LE
+        for i in range(16):        
+            # print "Processing DES Fiestel Round #", i
+            ## write code to carry out 16 rounds of processing
+            R_EStep48_L = e_step(RE)
+            R_EStep48 = get_estep_output48(R_EStep48_L)
+            rkey = roundkeys[i]
+            mixed_key48 = R_EStep48 ^ rkey
+            R_sub32 = substitution_step(s_box, mixed_key48)
+            #print "Substitution gave out", R_sub32.size, "bits", str(R_sub32)
+            R_perm32 = permutation_step(p_box_permutation, R_sub32)
+            #print "Permutationn gave out", R_perm32.size, "bits", str(R_perm32)
 
-    # print "Plain Text", bitvec.size, " bits: " , bitvec.get_text_from_bitvector()
-    # print "Plain Text", bitvec.size, " bits: " , bitvec
-    # print "Cipher Text", finaltext.size, " bits :", finaltext.get_text_from_bitvector()
-    # print "Base64 Cipher Text", base64.b64encode(finaltext.get_text_from_bitvector())
-    # print "Hex Cipher Text", finaltext.get_hex_string_from_bitvector()
-    # print "Final Out ", finaltext.size, " bits: " , finaltext
+            old_RE = RE
+            RE = R_perm32 ^ LE
+            LE = old_RE
 
-    finaltext.write_to_file(FILEOUT)
+            # print LE, RE
+
+        finaltext = LE + RE
+        if(DECRYPT): 
+            finaltext = RE + LE
+
+        # print "Plain Text", bitvec.size, " bits: " , bitvec.get_text_from_bitvector()
+        # print "Plain Text", bitvec.size, " bits: " , bitvec
+        # print "Cipher Text", finaltext.size, " bits :", finaltext.get_text_from_bitvector()
+        # print "Base64 Cipher Text", base64.b64encode(finaltext.get_text_from_bitvector())
+        # print "Hex Cipher Text", finaltext.get_hex_string_from_bitvector()
+        # print "Final Out ", finaltext.size, " bits: " , finaltext
+
+        finaltext.write_to_file(FILEOUT)
     FILEOUT.close()
 
     return finaltext

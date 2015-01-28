@@ -1,1 +1,1 @@
-Peter Xr
+Shellshock, also known as Bashdoor,[1] is a family of security bugs[2] in the widely used Unix Bash shell, the first of which was disclosed on 24 September 2014. Many Internet-facing services, such as some web server deployments, use Bash to process certain requests, allowing an attacker to cause vulnerable versions of Bash to execute
