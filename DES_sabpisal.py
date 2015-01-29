@@ -1,11 +1,17 @@
 #!/usr/bin/python
-#
-### DES
-
+###
+### 
+### DES ECB ECE4O4 
+### Suppatach Sabpisal (ssabpisa@purdue.edu)
+### Homework 2 Q1
+### 
+###
+###
 import sys, os
 from BitVector import *
 import re
 import base64
+
 ################################   Initial setup  ################################
 
 # Expansion permutation (See Section 3.3.1):
@@ -31,7 +37,6 @@ key_permutation_2 = [13,16,10,23,0,4,2,27,14,5,20,9,22,18,11,3,25,
 # to each half of the 56-bit key in each round (See Section 3.3.5):
 shifts_key_halvs = [1,1,2,2,2,2,2,2,1,2,2,2,2,2,2,1] 
 
-
 MODE_ENC = 1 # pass this literal to des function to encrypt
 MODE_DEC = 2 # or to decrypt
 
@@ -41,8 +46,9 @@ MODE_DEC = 2 # or to decrypt
 # of the file s-box-tables.txt:
 
 s_box = []
+
 ##
-##  Populate SBOX array from file
+##  Populate S-BOX array from file
 ##
 def populate_sbox(filename):
     arrays = []
@@ -82,7 +88,24 @@ def get_encryption_key(): # key
     return key_bv
 
 
-################################# Generatubg round keys  ########################
+def get_encryption_key_from_file(filename):                                                              
+    ## ask user for input and make sure it satisfies any constraints on the key
+    f = open(filename, "r")
+    user_supplied_key = f.read()
+    print "Using Key:", user_supplied_key
+    if(len(user_supplied_key) != 8):
+        print "Provided Key is not valid"
+        sys.exit(1)
+
+    ## construct a bit vector (64 bit)
+    user_key_bv = BitVector(textstring = user_supplied_key)
+    
+    # initial permutation 64 bit key
+    key_bv = user_key_bv.permute( key_permutation_1 )        ## permute() is a BitVector function
+    return key_bv
+
+
+################################# Generating round keys  ########################
 ##
 # Get Round Keys, 
 # @returns list of 16 keys indexed by Round 0 - 15 
@@ -103,7 +126,7 @@ def extract_round_key( nkey ): # round key
 ########################## encryption and decryption #############################
 
 def des(encrypt_or_decrypt, input_file, output_file, key ): 
-    accumulatebit = BitVector(size = 0)
+    accumulatebit = BitVector(size = 0) 
     last_round = False
     DECRYPT = False
     if(encrypt_or_decrypt == MODE_DEC):
@@ -157,13 +180,6 @@ def des(encrypt_or_decrypt, input_file, output_file, key ):
         finaltext = LE + RE
         if(DECRYPT): 
             finaltext = RE + LE
-
-        # print "Plain Text", bitvec.size, " bits: " , bitvec.get_text_from_bitvector()
-        # print "Plain Text", bitvec.size, " bits: " , bitvec
-        # print "Cipher Text", finaltext.size, " bits :", finaltext.get_text_from_bitvector()
-        # print "Base64 Cipher Text", base64.b64encode(finaltext.get_text_from_bitvector())
-        # print "Hex Cipher Text", finaltext.get_hex_string_from_bitvector()
-        # print "Final Out ", finaltext.size, " bits: " , finaltext
 
         accumulatebit = accumulatebit + finaltext
 
@@ -243,37 +259,14 @@ def get_estep_output48(padded_blocklist):
 
 #################################### main #######################################
 
-# def test_estep():
-#     bv = BitVector(size=32, intVal = 2147483698)
-#     print str(bv)
-#     R = e_step(bv)
-
-#     for bit in R:
-#         print str(bit)
-
-#     xp48 = get_estep_output48(R)
-#     print xp48
-
-# def test_roundkey(uv):
-#     print
-#     print "User Key", str(uv), "length", uv.size
-#     rk = extract_round_key(uv)
-#     for i,r in enumerate(rk):
-#         print "Round " + str(i), r , " size ", len(r), "ascii", r.get_text_from_bitvector()
-
-# def test_userkey():
-#     v = get_encryption_key()
-#     print "Your Key: " + str(v), v.size, "bits"
-#     return v
-
 
 def main():
     ## write code that prompts the user for the key
     ## and then invokes the functionality of your implementation
 
     userkey = get_encryption_key()
-    des(MODE_ENC, "peter.txt", "peter.enc", userkey)
-    des(MODE_DEC, "peter.enc", "peter.dec", userkey)
+    des(MODE_ENC, "message.txt", "encrypted.txt", userkey)
+    des(MODE_DEC, "encrypted.txt", "decrypted.txt", userkey)
 
 if __name__ == "__main__":
     main()

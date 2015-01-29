@@ -1,7 +1,14 @@
 #!/usr/bin/python
 #
 ### Compute Diffusion and Confusion
-
+###
+### 
+### DES ECE4O4 
+### Suppatach Sabpisal (ssabpisa@purdue.edu)
+### Homework 2 Q2
+### 
+###
+###
 import sys
 import DES_sabpisal as DESS
 import random
@@ -30,47 +37,102 @@ def main():
 
     userkey = DESS.get_encryption_key()
 
-    original = "peter.txt"
-    original_diffuse = "peter2.txt"
+    original = "message.txt"
+    original_diffuse = "message_bitmod.txt"
 
     f0 = open(original, "rb")
-    bv1 = BitVector(textstring = f0.read())
+    plaintext  = f0.read()
+    
 
-    bv1[0] = invert(bv1[0]);
-
-    f = open(original_diffuse, "wb")
-    f.write(bv1.get_text_from_bitvector())
-    f.close()
-    f0.close()
+    print "================= Q1 OBSERVING DIFFUSION ===================="
 
     a1 = DESS.des(DESS.MODE_ENC, original, "temp", userkey)
-    a2 = DESS.des(DESS.MODE_ENC, original_diffuse, "temp", userkey)
+    print "Cipher Text (original plain text): ", a1[0:15], "..."
+
+    ## Change one bit
+    sum = 0
+    for K in range(5):
+        bv1 = BitVector(textstring = plaintext)
+        wh = random.randrange(0, bv1.size)
+        bv1[wh] = invert(bv1[wh]);
+
+        f = open(original_diffuse, "wb")
+        f.write(bv1.get_text_from_bitvector())
+        f.close()
+        f0.close()
+
+        a2 = DESS.des(DESS.MODE_ENC, original_diffuse, "temp", userkey)
+
+        print "Cipher Text (1 random bit changed): ", a2[0:15], "..."
+
+        diff = a1 ^ a2
+
+        print "Bits Diff: ", diff.count_bits()
+        sum += diff.count_bits()
+    print "Average Diff : ", sum/5
+
+    print "================= Q3 OBSERVING CONFUSION ===================="
 
 
-    print "================= WITH PROVIDED S-BOX ===================="
-    print "Cipher Text (original plain text): ", a1[0:15]
-    print "Cipher Text (plain text 1 bit changed): ", a2[0:15]
+    keylist = []
 
-    diff = a1 ^ a2
+    for trykey in range(5):
+        keyname = "keybit" + str(trykey) + ".key"
+        f = open(keyname, "w")
+        bkey = BitVector(textstring = "sherlock")
+        wh = random.randrange(0, bkey.size) #what bit to change
+        bkey[wh] = invert(bkey[wh])
+        f.write(bkey.get_text_from_bitvector())
+        f.close()
+        keylist.append(keyname)
 
-    print "Bits Different: ", diff.count_bits()
-    print "Percent Diffusion: ", 100*diff.count_bits()/64.00
+    print "Cipher Text (key = sherlock): ", a1[0:15], "..."
+    diffsum = 0
+    for K in keylist:
+        customkey = DESS.get_encryption_key_from_file(K)
+        a2 = DESS.des(DESS.MODE_ENC, original, "temp", customkey)
 
-    print "================ WITH DIFFERENT S-BOX ==================="
+        diff = a1 ^ a2
+    
+        diffbit = diff.count_bits()
+        diffsum += diffbit
+
+        print "Cipher Text (keyfile = " + K + "): ", a2[0:15], "..."
+        print "Diff : ", diffbit
+        print "----------------------------"
+    print "Average Bit Difference : ", diffsum/len(keylist)
+
+    print "================ Q2 WITH RANDOMLY GENERATED S-BOX ==================="
+
+    print "Cipher Text (original plain text): ", a1[0:15], "..."
+    sum = 0
     randomly_generate_sbox("s-box-generated.txt")
-
     DESS.populate_sbox("s-box-generated.txt")
 
     a1 = DESS.des(DESS.MODE_ENC, original, "temp", userkey)
-    a2 = DESS.des(DESS.MODE_ENC, original_diffuse, "temp", userkey)
+    print "Cipher Text (plain text, new sbox): ", a1[0:15], "..."
 
-    print "Cipher Text (original plain text): ", a1
-    print "Cipher Text (plain text 1 bit changed): ", a2
+    for K in range(6):
+        bv1 = BitVector(textstring = plaintext)
+        wh = random.randrange(0, bv1.size)
+        bv1[wh] = invert(bv1[wh]);
 
-    diff = a1 ^ a2
+        f = open(original_diffuse, "wb")
+        f.write(bv1.get_text_from_bitvector())
+        f.close()
+        f0.close()
 
-    print "Bits Different: ", diff.count_bits()
-    print "Percent Diffusion: ", 100*diff.count_bits()/64.00
+        a2 = DESS.des(DESS.MODE_ENC, original_diffuse, "temp", userkey)
+
+        print "Cipher Text (1 random bit changed): ", a2[0:15], "..."
+
+        diff = a1 ^ a2
+
+        print "Bits Diff: ", diff.count_bits()
+    
+        sum += diff.count_bits()
+
+    print "Average Bit Diff : ", sum/6
 
     print "====================================="
 
