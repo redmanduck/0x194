@@ -103,6 +103,7 @@ def extract_round_key( nkey ): # round key
 ########################## encryption and decryption #############################
 
 def des(encrypt_or_decrypt, input_file, output_file, key ): 
+    accumulatebit = BitVector(size = 0)
     last_round = False
     DECRYPT = False
     if(encrypt_or_decrypt == MODE_DEC):
@@ -112,7 +113,7 @@ def des(encrypt_or_decrypt, input_file, output_file, key ):
         DECRYPT = False
         print "Encrypting..."
 
-    bv = BitVector( filename = input_file ) 
+    # bv = BitVector( filename = input_file ) 
     FILEOUT = open( output_file, 'wb' ) 
     bv = BitVector( filename = input_file )
 
@@ -164,10 +165,12 @@ def des(encrypt_or_decrypt, input_file, output_file, key ):
         # print "Hex Cipher Text", finaltext.get_hex_string_from_bitvector()
         # print "Final Out ", finaltext.size, " bits: " , finaltext
 
+        accumulatebit = accumulatebit + finaltext
+
         finaltext.write_to_file(FILEOUT)
     FILEOUT.close()
+    return accumulatebit
 
-    return finaltext
 
 ## Expansion Permutation (E-step)
 ## 

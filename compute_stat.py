@@ -26,6 +26,7 @@ def main():
     ## write code that prompts the user for the key
     ## and then invokes the functionality of your implementation
     
+    print "Computing Statistics"
 
     userkey = DESS.get_encryption_key()
 
@@ -35,9 +36,7 @@ def main():
     f0 = open(original, "rb")
     bv1 = BitVector(textstring = f0.read())
 
-    for j in range(1):
-    	#how many bit to change
-    	bv1[j] = invert(bv1[j]);
+    bv1[0] = invert(bv1[0]);
 
     f = open(original_diffuse, "wb")
     f.write(bv1.get_text_from_bitvector())
@@ -49,8 +48,8 @@ def main():
 
 
     print "================= WITH PROVIDED S-BOX ===================="
-    print "Cipher Text (original plain text): ", a1
-    print "Cipher Text (plain text 1 bit changed): ", a2
+    print "Cipher Text (original plain text): ", a1[0:15]
+    print "Cipher Text (plain text 1 bit changed): ", a2[0:15]
 
     diff = a1 ^ a2
 
