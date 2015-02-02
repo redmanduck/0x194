@@ -40,6 +40,21 @@ for i in Z17:
 ## answer : modulo n addition will make Z17 a group
 
 # Q2. List all steps involved in computing gcd(1056, 348)
+# using i. euclid , ii. stein
 
+# i. Euclid 
+# gcd(tup)
+# tup = (a,b)
+def eugcd(tup):
+	if(tup[0] == 0):
+		return tup[1]
+	elif(tup[1] == 0):
+		return tup[0]
 
+	tup_n = (tup[1], tup[0] % tup[1])
+	print "euclid GCD", tup_n
+	return eugcd(tup_n)
+
+ans = eugcd((1056,348))
+print "GCD(1056, 348) = ", ans
 
