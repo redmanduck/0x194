@@ -46,15 +46,50 @@ for i in Z17:
 # gcd(tup)
 # tup = (a,b)
 def eugcd(tup):
+	print "euclid GCD", tup
+
 	if(tup[0] == 0):
 		return tup[1]
 	elif(tup[1] == 0):
 		return tup[0]
+	elif(tup[1] == tup[0]):
+		return tup[1]
 
 	tup_n = (tup[1], tup[0] % tup[1])
-	print "euclid GCD", tup_n
 	return eugcd(tup_n)
 
+def steingcd(tup):
+	print "stein GCD", tup
+
+	tup0_even = (tup[0] & 0x1 == 0)
+	tup1_even = (tup[1] & 0x1 == 0) 
+
+	if(tup[0] == 0):
+		return tup[1]
+	if(tup[1] == 0):
+		return tup[0]
+	if(tup[1] == tup[0]):
+		return tup[1]
+
+	if(tup0_even and tup1_even):
+		return steingcd((tup[0] >> 1, tup[1] >> 1)) << 1;
+
+	if (tup0_even and not tup1_even):
+		return steingcd((tup[0] >> 1, tup[1]))
+
+	if (tup0_even):
+		return steingcd(tup[0], tup[1] >> 1)
+
+	if (tup[0] > tup[1]):
+		return steingcd(( (tup[0] - tup[1]) >> 1, tup[1]  ))
+
+	return steingcd((tup[0], (tup[1] - tup[0]) >> 1));
+
+
+
 ans = eugcd((1056,348))
-print "GCD(1056, 348) = ", ans
+print "eGCD(1056, 348) = ", ans
+
+ans = steingcd((1056,348))
+print "sGCD(1056, 348) = ", ans
 
