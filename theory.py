@@ -65,24 +65,32 @@ def steingcd(tup):
 	tup1_even = (tup[1] & 0x1 == 0) 
 
 	if(tup[0] == 0):
+		print "Base case 1"
 		return tup[1]
 	if(tup[1] == 0):
+		print "Base case 2"
 		return tup[0]
 	if(tup[1] == tup[0]):
+		print "Base case 3"
 		return tup[1]
 
 	if(tup0_even and tup1_even):
+		print "a even , b even"
 		return steingcd((tup[0] >> 1, tup[1] >> 1)) << 1;
 
 	if (tup0_even and not tup1_even):
+		print "a even, b odd"
 		return steingcd((tup[0] >> 1, tup[1]))
 
 	if (tup0_even):
+		print "a even"
 		return steingcd(tup[0], tup[1] >> 1)
 
 	if (tup[0] > tup[1]):
+		print "a  > b"
 		return steingcd(( (tup[0] - tup[1]) >> 1, tup[1]  ))
-
+	print (tup[0], (tup[1] - tup[0]) >> 1),
+	print "----- recurse -- S(a, b - a >> 1)"
 	return steingcd((tup[0], (tup[1] - tup[0]) >> 1));
 
 
