@@ -33,9 +33,9 @@ for i in Z17:
 	C = multinv(i, Z17)
 	D = addinv(i, Z17)
 	if C == -1:
-		print "there is no multiplicative inv of ", i, j
+		print "there is no multiplicative inv of ", i
 	if D == -1:
-		print "there is no additive inv of ", i ,j
+		print "there is no additive inv of ", i
 
 ## answer : modulo n addition will make Z17 a group
 
@@ -86,10 +86,40 @@ def steingcd(tup):
 	return steingcd((tup[0], (tup[1] - tup[0]) >> 1));
 
 
-
 ans = eugcd((1056,348))
 print "eGCD(1056, 348) = ", ans
-
+print "=============================="
 ans = steingcd((1056,348))
 print "sGCD(1056, 348) = ", ans
+# stein GCD (1056, 348)
+# stein GCD (528, 174)
+# stein GCD (264, 87)
+# stein GCD (132, 87)
+# stein GCD (66, 87)
+# stein GCD (33, 87)
+# stein GCD (33, 27)
+# stein GCD (3, 27)
+# stein GCD (3, 12)
+# stein GCD (3, 4)
+# stein GCD (3, 0)
+# sGCD(1056, 348) =  12
+print "=============================="
+
+
+# Q3. Use Extended Euclid Algorithm to compute by hand the
+# multiplicative inverse of 21 in Z34. List all steps
+
+# ax + by = gcd(a,b)
+# on paper
+
+# Q4. Which non zero eleme in Z14 has no MI
+
+Z14 = range(14)
+nmi = []
+for a in Z14:
+	ans = eugcd((a,14))
+	if(ans != 1):
+		nmi.append(a)
+
+print nmi
 
