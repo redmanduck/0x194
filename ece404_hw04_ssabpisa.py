@@ -1,8 +1,15 @@
 #!/usr/bin/python
 #
+#
+#  ECB implementation of AES
+#  only tested with 128 bit key size
+#
+#
+
 import sys
 from BitVector import *
 import random
+from copy import deepcopy
 
 BYTE = 8
 WORD = 4*BYTE
@@ -29,7 +36,7 @@ def print_state(M):
 """
 def _getSubstitute(ib, L):
     if len(ib) > BYTE:
-        raise Exception("Input BYTE is not a byte")
+        raise Exception("Input BYTE to find sub is not a byte")
     r = int(ib[0:3])
     c = int(ib[4:7])
     return L[r][c]
@@ -134,7 +141,7 @@ class KeySchedule:
             self.xkey.append(wi)
 
     def get_key_for_round(self, i):
-        return self.xkey[i]
+        return self.xkey[i*4] + self.xkey[i*4+1] + self.xkey[i*4+2]  + self.xkey[i*4+3]
 
 
 class AES:
@@ -162,34 +169,49 @@ class AES:
         return M
 
     def encrypt(self, textbv, keyschedule):
-        textbv = self.add_round_key(textbv , keyschedule.get_key_for_round(0))
+        textbv = AES.add_round_key(textbv , keyschedule.get_key_for_round(0))
         state_r = self.state_array_from_bv128(textbv)
         for i in range(10):
-            state_r = self.round_process(state_r, keyschedule.get_key_for_round(1))
+            state_r = self.round_process(state_r, keyschedule.get_key_for_round(i+1))
 
-    def add_round_key(self, textbv, roundkey_bv):
-        return roundkey_bv ^ textbv
+    @staticmethod
+    def add_round_key(bv, roundkey_bv):
+        if len(bv) != len(roundkey_bv):
+            raise Exception("Round Key and BV len not equal!")
+        return roundkey_bv ^ bv
 
     def round_process(self, state_r, roundkey_bv):
         if(state_r == None):
             raise Exception("State Array is None")
+
         # SUB BYTE
         state_r = AES.subbyte(self.getLookupTable(), state_r)
         # SHIFT ROW
         state_r = AES.shiftrows(state_r)
         # MIX COLUMN
+        state_r = AES.mixcolumns(state_r)
+
 
         # add round KEY
+        keybytes = []
+        for i in range(16):
+            keybytes.append(roundkey_bv[i*8:i*8+8])
+        g=0
+        for r in range(len(state_r)):
+            for c in range(len(state_r)):
+                xorkey = keybytes[g]
+                state_r[r][c] = AES.add_round_key(state_r[r][c], xorkey)
+                g = g +1
 
         return state_r
 
     @staticmethod
     def shiftrows(M):
-        if len(M) != 4:
-            raise Exception("Only 10 round, DES-128 is supported")
-
-        M0 = M[:]
+        print "--------- Shift Row ----------"
         N = len(M)
+        MF = deepcopy(M)
+        M0 = deepcopy(M)
+
         for r in range(1,N):
             for c in range(N):
                 cx = c + r
@@ -199,9 +221,9 @@ class AES:
                     cx = over - 1
 
                 print "(%d, %d) -> (%d, %d)" % (r,c, r, cx)
-                M[r][c] = M0[r][cx]
+                MF[r][c] = M0[r][cx]
 
-        return M
+        return MF
 
     @staticmethod
     def subbyte(LTB, state_r):
@@ -211,6 +233,40 @@ class AES:
                 state_r[i][j] = cand
 
         return state_r
+
+    @staticmethod
+    def mixcolumns(S):
+        M = deepcopy(S)
+
+        """
+            Encryption
+
+            [ 2 3 1 1
+              1 2 3 1    x   [S] = [S*]
+              1 1 2 3
+              3 1 1 2 ]
+
+            Decryption
+
+            [ E B D 9
+              9 E B D    x   [S] = [S*]
+              D 9 E B
+              B D 9 E]
+        """
+        two = BitVector(intVal=2, size=BYTE)
+        three = BitVector(intVal=3, size=BYTE)
+        E = BitVector(intVal=14, size=BYTE)
+        D = BitVector(intVal=13, size=BYTE)
+        B = BitVector(intVal=11,size=BYTE)
+        nine = BitVector(intVal=9, size=BYTE)
+
+        for j in range(len(S)):
+            M[0][j] = S[0][j].gf_multiply_modular(two, MODULUS, 8) ^ S[1][j].gf_multiply_modular(three, MODULUS, 8) ^ S[2][j] ^ S[3][j]
+            M[1][j] = S[0][j] ^ (S[1][j].gf_multiply_modular(two, MODULUS, 8)) ^ (S[2][j].gf_multiply_modular(three, MODULUS, 8)) ^ S[3][j]
+            M[2][j] = S[0][j] ^ S[1][j] ^ (S[2][j].gf_multiply_modular(two, MODULUS, 8)) ^ (S[3][j].gf_multiply_modular(three, MODULUS, 8))
+            M[3][j] = S[0][j].gf_multiply_modular(three, MODULUS, 8) ^ S[1][j] ^ S[2][j] ^ S[3][j].gf_multiply_modular(two, MODULUS, 8)
+
+        return M
 
     def getLookupTable(self):
         return self.LTB
@@ -258,7 +314,38 @@ class UnitTest:
     def test_round_keys(KeyScheduleObj):
         xkey = KeyScheduleObj.xkey
         assert(len(xkey) == 44)
-        assert(xkey[40] == KeyScheduleObj.get_key_for_round(40))
+        assert(xkey[40] + xkey[41] + xkey[42] + xkey[43] == KeyScheduleObj.get_key_for_round(10))
+        for key in xkey:
+            assert(len(key) == WORD)
+
+    @staticmethod
+    def test_shiftrow():
+        M = [[None for r in range(4)] for c in range(4)]
+        for i in range(4):
+            for j in range(4):
+                M[j][i] = BitVector(intVal=j,size=BYTE/2)+ BitVector(intVal=i, size=BYTE/2)
+
+        Ms = AES.shiftrows(M)
+
+        assert(Ms[0][0] == M[0][0])
+        assert(Ms[0][1] == M[0][1])
+        assert(Ms[0][2] == M[0][2])
+        assert(Ms[0][3] == M[0][3])
+
+        assert(Ms[1][0] == M[1][1])
+        assert(Ms[1][1] == M[1][2])
+        assert(Ms[1][2] == M[1][3])
+        assert(Ms[1][3] == M[1][0])
+
+        assert(Ms[2][0] == M[2][2])
+        assert(Ms[2][1] == M[2][3])
+        assert(Ms[2][2] == M[2][0])
+        assert(Ms[2][3] == M[2][1])
+
+        assert(Ms[3][0] == M[3][3])
+        assert(Ms[3][1] == M[3][0])
+        assert(Ms[3][2] == M[3][1])
+        assert(Ms[3][3] == M[3][2])
 
 
 if __name__ == "__main__":
