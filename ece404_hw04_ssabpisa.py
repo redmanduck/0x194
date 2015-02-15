@@ -123,8 +123,12 @@ class KeySchedule:
 class AES:
     LTB = []# look up table
     LTB_SIZE = 16
-    def __init__(self, key, keylength=128):
+    ENCRYPT = 'encrypt'
+    DECRYPT = 'decrypt'
+
+    def __init__(self, key, keylength=128, mode=ENCRYPT):
         self.generate_lookup_table()
+        self.mode = mode
 
     def encrypt(self, text, keyschedule):
         pass
@@ -136,12 +140,27 @@ class AES:
         self.LTB = [[(BitVector(size=4,intVal=r) + BitVector(size=4,intVal=c)) for c in range(self.LTB_SIZE)] for r in range(self.LTB_SIZE)]
         # replace with MI
         print "Generating LTB.."
+        #affine
         for r in range(16):
             for c in range(16):
                 if r == 0 and c == 0:
                     #there is no MI of 0
                     continue
                 self.LTB[r][c] = self.LTB[r][c].gf_MI(MODULUS, 8)
+
+        for r in range(16):
+            for c in range(16):
+                #bit scramble
+                cbyte = BitVector(bitstring='01100011') #0x63
+                for i in range(8):
+                    print "b = ", self.LTB[r][c]
+                    bi = self.LTB[r][c][i]
+                    bi_4 = self.LTB[r][c][(i+4) % 8]
+                    bi_5 = self.LTB[r][c][(i+5) % 8]
+                    bi_6 = self.LTB[r][c][(i+6) % 8]
+                    bi_7 = self.LTB[r][c][(i+7) % 8]
+                    ci = cbyte[i]
+                    self.LTB[r][c][i] = bi ^ bi_4 ^ bi_5 ^ bi_6 ^ bi_7 ^ ci
 
         print "------ LTB -------"
         for r in range(16):
