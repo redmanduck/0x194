@@ -47,7 +47,8 @@ class KeySchedule:
 
 
         # expand {w0...w3} to {w0...w43}
-        self.expand(0)
+        for i in range(10):
+            self.expand(i)
 
         print "----------- W0..W43 ----------------"
         for i, wrd in enumerate(self.xkey):
@@ -56,6 +57,7 @@ class KeySchedule:
 
     def g(self, x):
         return x
+
     """
         generate the next set of N words
     """
@@ -64,10 +66,12 @@ class KeySchedule:
 
         # self.xkey[0][i] gives i-th byte of w0
         w0 = self.g(self.xkey[offset*N + (N - 1)]) ^ self.xkey[offset*N]
+        print "w" + str(offset*4 + 4) + " = g(w" + str(offset*N + (N - 1)) + ") $ w" + str(offset*N)
         self.xkey.append(w0)
 
         for i in range(1,N):
-            wi = self.g(self.xkey[i + offset*N]) ^ self.xkey[i-1 + offset*N]
+            # print "w" + str(offset*4 + 4 + i) + " = w" + str(i-1 + (offset+1)*N) + " $ w" + str(i + offset*N)
+            wi = self.g(self.xkey[i-1 + (offset+1)*N]) ^ self.xkey[i + offset*N]
             self.xkey.append(wi)
 
     def generate_lookup_table(self):
