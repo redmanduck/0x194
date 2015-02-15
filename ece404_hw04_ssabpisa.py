@@ -6,6 +6,8 @@ import random
 
 BYTE = 8
 WORD = 4*BYTE
+MODULUS = BitVector(bitstring = '100011011') #AES irreducible polynomial in GF(2^8)
+
 
 def _hex(bv):
     return bv.getHexStringFromBitVector()
@@ -91,12 +93,11 @@ class KeySchedule:
         return w
 
     def generate_RC(self):
-        modulus = BitVector(bitstring = '100011011')
         n = 8  # indicate we are in GF(2^8)
         RC = [BitVector(intVal=1, size=BYTE)]*10
         #1 -9
         for j in range(1, 10):
-            RC[j] =  RC[j-1].gf_multiply_modular(BitVector(intVal=2), modulus, n)
+            RC[j] =  RC[j-1].gf_multiply_modular(BitVector(intVal=2), MODULUS, n)
 
         EMPTYBYTE = BitVector(size=BYTE)
         for i in range(10):
@@ -119,8 +120,6 @@ class KeySchedule:
             self.xkey.append(wi)
 
 
-
-
 class AES:
     LTB = []# look up table
     LTB_SIZE = 16
@@ -134,7 +133,21 @@ class AES:
         return self.LTB
 
     def generate_lookup_table(self):
-        self.LTB = [[BitVector(size=BYTE,intVal=random.randint(0,100)) for x in range(self.LTB_SIZE)] for x in range(self.LTB_SIZE)]
+        self.LTB = [[(BitVector(size=4,intVal=r) + BitVector(size=4,intVal=c)) for c in range(self.LTB_SIZE)] for r in range(self.LTB_SIZE)]
+        # replace with MI
+        print "Generating LTB.."
+        for r in range(16):
+            for c in range(16):
+                if r == 0 and c == 0:
+                    #there is no MI of 0
+                    continue
+                self.LTB[r][c] = self.LTB[r][c].gf_MI(MODULUS, 8)
+
+        print "------ LTB -------"
+        for r in range(16):
+            for c in range(16):
+                print _hex(self.LTB[r][c]),
+            print
 
 if __name__ == "__main__":
     key = "lukeimyourfather"
