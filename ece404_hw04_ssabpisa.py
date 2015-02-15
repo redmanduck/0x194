@@ -174,6 +174,16 @@ class AES:
         for i in range(10):
             state_r = self.round_process(state_r, keyschedule.get_key_for_round(i+1))
 
+        return self.reconstruct_column_wise(state_r)
+
+    def reconstruct_column_wise(self, SR):
+        concat = BitVector(size=0)
+        for c in range(len(SR)):
+            for r in range(len(SR)):
+                concat = concat + SR[r][c]
+
+        return concat
+
     @staticmethod
     def add_round_key(bv, roundkey_bv):
         if len(bv) != len(roundkey_bv):
@@ -360,4 +370,5 @@ if __name__ == "__main__":
     UnitTest.test_round_constants(ksch)
 
     plain_t = plain.read_bits_from_file(BLKSIZE)
-    crypt.encrypt(plain_t, ksch)
+    output = crypt.encrypt(plain_t, ksch)
+    print len(output), "bits cipher: ", _hex(output)
