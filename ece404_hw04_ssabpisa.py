@@ -11,7 +11,22 @@ MODULUS = BitVector(bitstring = '100011011') #AES irreducible polynomial in GF(2
 
 def _hex(bv):
     return bv.getHexStringFromBitVector()
+def _text(bv):
+    return bv.get_text_from_bitvector()
+def lrotate(l,n):
+    return l[n:] + l[:n]
 
+def print_state(M):
+    # Assume square matrices
+    print "--------- State Array ----------"
+    for i in range(len(M)):
+        for j in range(len(M)):
+            print _hex(M[i][j]), " | ",
+        print
+"""
+    get subbyte frm lookup table (16x16)
+    given input byte
+"""
 def _getSubstitute(ib, L):
     if len(ib) > BYTE:
         raise Exception("Input BYTE is not a byte")
@@ -118,6 +133,9 @@ class KeySchedule:
             wi = self.g(self.xkey[i-1 + (offset+1)*N], rnd) ^ self.xkey[i + offset*N]
             self.xkey.append(wi)
 
+    def get_key_for_round(self, i):
+        return self.xkey[i]
+
 
 class AES:
     LTB = []# look up table
@@ -125,12 +143,74 @@ class AES:
     ENCRYPT = 'encrypt'
     DECRYPT = 'decrypt'
 
+    state_dim = 4
+
     def __init__(self, key, keylength=128, mode=ENCRYPT):
         self.generate_lookup_table()
         self.mode = mode
 
-    def encrypt(self, text, keyschedule):
-        pass
+    def state_array_from_bv128(self, txtbv):
+        if(len(txtbv) != 128):
+            raise Exception("Text BitVector is not 128 bit!")
+        M = [[None for x in range(self.state_dim)] for x in range(self.state_dim)]
+        for i in range(self.state_dim):
+            for j in range(self.state_dim):
+                M[j][i] = BitVector(bitstring=txtbv[WORD*i + BYTE*j : WORD*i + BYTE*(j+1)])
+
+        print_state(M)
+
+        return M
+
+    def encrypt(self, textbv, keyschedule):
+        textbv = self.add_round_key(textbv , keyschedule.get_key_for_round(0))
+        state_r = self.state_array_from_bv128(textbv)
+        for i in range(10):
+            state_r = self.round_process(state_r, keyschedule.get_key_for_round(1))
+
+    def add_round_key(self, textbv, roundkey_bv):
+        return roundkey_bv ^ textbv
+
+    def round_process(self, state_r, roundkey_bv):
+        if(state_r == None):
+            raise Exception("State Array is None")
+        # SUB BYTE
+        state_r = AES.subbyte(self.getLookupTable(), state_r)
+        # SHIFT ROW
+        state_r = AES.shiftrows(state_r)
+        # MIX COLUMN
+
+        # add round KEY
+
+        return state_r
+
+    @staticmethod
+    def shiftrows(M):
+        if len(M) != 4:
+            raise Exception("Only 10 round, DES-128 is supported")
+
+        M0 = M[:]
+        N = len(M)
+        for r in range(1,N):
+            for c in range(N):
+                cx = c + r
+                if(cx > (N-1)):
+                    #wrap around
+                    over = cx - (N-1)
+                    cx = over - 1
+
+                print "(%d, %d) -> (%d, %d)" % (r,c, r, cx)
+                M[r][c] = M0[r][cx]
+
+        return M
+
+    @staticmethod
+    def subbyte(LTB, state_r):
+        for i in range(len(state_r)):
+            for j in range(len(state_r)):
+                cand = _getSubstitute(state_r[i][j], LTB)
+                state_r[i][j] = cand
+
+        return state_r
 
     def getLookupTable(self):
         return self.LTB
@@ -172,15 +252,25 @@ class AES:
 class UnitTest:
     @staticmethod
     def test_round_constants(KeyScheduleObj):
-        #check rcon correctness
-        print
-        print "======= [TEST] Round Constant ========="
-        print
-        print KeyScheduleObj.Rcon
+        assert(len(KeyScheduleObj.Rcon) == 10)
+
+    @staticmethod
+    def test_round_keys(KeyScheduleObj):
+        xkey = KeyScheduleObj.xkey
+        assert(len(xkey) == 44)
+        assert(xkey[40] == KeyScheduleObj.get_key_for_round(40))
+
 
 if __name__ == "__main__":
     key = "lukeimyourfather"
-    crypt = AES(key)
-    ksch = KeySchedule(key, 128, crypt.getLookupTable())
+    BLKSIZE = 128
+    plain = BitVector(filename='plaintext.txt')
 
+    crypt = AES(key)
+    ksch = KeySchedule(key, BLKSIZE, crypt.getLookupTable())
+
+    UnitTest.test_round_keys(ksch)
     UnitTest.test_round_constants(ksch)
+
+    plain_t = plain.read_bits_from_file(BLKSIZE)
+    crypt.encrypt(plain_t, ksch)
