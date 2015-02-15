@@ -70,6 +70,7 @@ class KeySchedule:
         for i, wrd in enumerate(self.xkey):
             print 'w'+str(i), "=",
             print _hex(wrd), ",",
+        print
 
     def g(self, w, rnd):
 
@@ -86,7 +87,6 @@ class KeySchedule:
                 w[j + BYTE*i] = sub[j]
 
         #XOR bytes with round const
-
         w = self.Rcon[rnd - 1] ^ w
 
 
@@ -102,7 +102,6 @@ class KeySchedule:
         EMPTYBYTE = BitVector(size=BYTE)
         for i in range(10):
             self.Rcon.append(RC[i] + EMPTYBYTE + EMPTYBYTE + EMPTYBYTE)
-
 
     """
         generate the next set of N words
@@ -168,7 +167,20 @@ class AES:
                 print _hex(self.LTB[r][c]),
             print
 
+
+
+class UnitTest:
+    @staticmethod
+    def test_round_constants(KeyScheduleObj):
+        #check rcon correctness
+        print
+        print "======= [TEST] Round Constant ========="
+        print
+        print KeyScheduleObj.Rcon
+
 if __name__ == "__main__":
     key = "lukeimyourfather"
     crypt = AES(key)
     ksch = KeySchedule(key, 128, crypt.getLookupTable())
+
+    UnitTest.test_round_constants(ksch)
