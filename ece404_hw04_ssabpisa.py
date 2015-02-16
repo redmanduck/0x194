@@ -10,6 +10,7 @@ import sys
 from BitVector import *
 import random
 from copy import deepcopy
+from base64 import b64encode
 
 BYTE = 8
 WORD = 4*BYTE
@@ -293,24 +294,25 @@ class AES:
                     continue
                 self.LTB[r][c] = self.LTB[r][c].gf_MI(MODULUS, 8)
 
+        print "------ Pre ENC SBOX -------"
+        for r in range(16):
+            for c in range(16):
+                print self.LTB[r][c].intValue(),
+            print
+
         for r in range(16):
             for c in range(16):
                 #bit scramble
                 cbyte = BitVector(bitstring='01100011') #0x63
-                for i in range(8):
-                    print "b = ", self.LTB[r][c]
-                    bi = self.LTB[r][c][i]
-                    bi_4 = self.LTB[r][c][(i+4) % 8]
-                    bi_5 = self.LTB[r][c][(i+5) % 8]
-                    bi_6 = self.LTB[r][c][(i+6) % 8]
-                    bi_7 = self.LTB[r][c][(i+7) % 8]
-                    ci = cbyte[i]
-                    self.LTB[r][c][i] = bi ^ bi_4 ^ bi_5 ^ bi_6 ^ bi_7 ^ ci
+                #for i in range(8):
+                #    self.LTB[r][c][i] = LRC[i] ^ LRC[(i+4) % 8] ^ LRC[(i+5) % 8] ^ LRC[(i+6) % 8] ^ LRC[(i+7) % 8] ^ cbyte[i]
+                a1,a2,a3,a4 = [self.LTB[r][c].deep_copy() for x in range(4)]
+                self.LTB[r][c] ^= (a1 >> 4) ^ (a2 >> 5) ^ (a3 >> 6) ^ (a4 >> 7) ^ cbyte
 
-        print "------ LTB -------"
+        print "------ ENC SBOX -------"
         for r in range(16):
             for c in range(16):
-                print _hex(self.LTB[r][c]),
+                print self.LTB[r][c].intValue(),
             print
 
 
@@ -357,6 +359,13 @@ class UnitTest:
         assert(Ms[3][2] == M[3][1])
         assert(Ms[3][3] == M[3][2])
 
+    @staticmethod
+    def test_sbox(LTB):
+        assert(LTB[0][0].intValue() == 99)
+        assert(LTB[0][1].intValue() == 124)
+        assert(LTB[0][2].intValue() == 119)
+        assert(LTB[15][15].intValue() == 22)
+
 
 if __name__ == "__main__":
     key = "lukeimyourfather"
@@ -364,11 +373,15 @@ if __name__ == "__main__":
     plain = BitVector(filename='plaintext.txt')
 
     crypt = AES(key)
-    ksch = KeySchedule(key, BLKSIZE, crypt.getLookupTable())
+    LTB = crypt.getLookupTable()
+    ksch = KeySchedule(key, BLKSIZE, LTB)
 
     UnitTest.test_round_keys(ksch)
     UnitTest.test_round_constants(ksch)
+    UnitTest.test_sbox(LTB)
+
 
     plain_t = plain.read_bits_from_file(BLKSIZE)
     output = crypt.encrypt(plain_t, ksch)
     print len(output), "bits cipher: ", _hex(output)
+    print "plain:",  plain_t.get_text_from_bitvector()
