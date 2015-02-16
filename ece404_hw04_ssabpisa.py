@@ -124,23 +124,33 @@ class KeySchedule:
             RC[j] =  RC[j-1].gf_multiply_modular(BitVector(intVal=2), MODULUS, 8)
 
         EMPTYBYTE = BitVector(size=BYTE)
-        for i in range(10):
+        self.Rcon.append(EMPTYBYTE + EMPTYBYTE + EMPTYBYTE + EMPTYBYTE)
+        for i in range(1,10):
             self.Rcon.append(RC[i] + EMPTYBYTE + EMPTYBYTE + EMPTYBYTE)
 
     """
         generate the next set of N words
+
+        ['6c756b65', '696d796f', '75726661', '68657274', 'bd382bf7', 'd4555298', 'a12734f9', '42468dc9', '9362bc8f', '4737ee17', 'e610daee', '565727a4', '263970c6', '610e9ed1', '871e443f', '49639bd1', 'adc2acf8', 'cccc3229', '4bd27616', 'b1edc702', '751b6a8f', 'b9d758a6', 'f2052eb0', 'e8e9b243', 'b4e35d95', '0d340533', 'ff312b83', 'd899c017', '8462e765', '8956e256', '7667c9d5', 'fe09c2ae', '461ec241', 'cf482017', 'b92fe9c2', '262b6c47', 'aa3881e1', '6570a1f6', 'dc5f4834', '742473fa', '0e0e0e68', '6b7eaf9e', 'b721e7aa', 'c3059450']
+
+        ['6c756b65', '696d796f', '75726661', '68657274', 'bd382bf7', 'd4555298', 'a12734f9', '42468dc9', '9362bc8f', '4737ee17', 'e610daee', '565727a4', '263970c6', '610e9ed1', '871e443f', '49639bd1', 'adc2acf8', 'cccc3229', '4bd27616', 'b1edc702', '751b6a8f', 'b9d758a6', 'f2052eb0', 'e8e9b243', 'b4e35d95', '0d340533', 'ff312b83', 'd899c017', '8462e765', '8956e256', '7667c9d5', 'fe09c2ae', '461ec241', 'cf482017', 'b92fe9c2', '262b6c47', 'aa3881e1', '6570a1f6', 'dc5f4834', '742473fa', '0e0e0e68', '6b7eaf9e', 'b721e7aa', 'c3059450']
+
+
+
     """
     def expand(self, offset):
         N = self.state_dim
         rnd = offset #round number
 
+        i = len(self.xkey)
         # self.xkey[0][i] gives i-th byte of w0
-        w0 = self.g(self.xkey[offset*N + (N - 1)], rnd) ^ self.xkey[offset*N]
+        w0 = self.g(self.xkey[i  -1 ], rnd) ^ self.xkey[i-4]
         # print "w" + str(len(self.xkey)) + " = " + "g(w%d) ^ w%d" % (offset*N + (N - 1), offset*N)
         self.xkey.append(w0)
 
         for i in range(1,N):
-            wi = self.xkey[len(self.xkey) - 1] ^ self.xkey[i + offset*N]
+            x = len(self.xkey)
+            wi = self.xkey[x - 1] ^ self.xkey[x - 4]
             # print "w" + str(len(self.xkey)) + " = " + "w%d ^ w%d" % (len(self.xkey) - 1, i + offset*N)
             self.xkey.append(wi)
 
@@ -228,8 +238,11 @@ class AES:
             # SHIFT ROW
             state_r = AES.shiftrows(state_r)
             # MIX COLUMN
-            if(IS_LAST):
+            if not IS_LAST:
+                print "IS NOT LAST ENC"
                 state_r = AES.mixcolumns(state_r)
+            else:
+                print "IS LAST ENC"
 
             # add round KEY
             # g=0
@@ -262,8 +275,11 @@ class AES:
             state_r = self.state_array_from_bv128(XK)
 
             # INV MIX COLUMN
-            if(IS_LAST):
+            if not IS_LAST:
+                print "IS NOT LAST DEC"
                 tate_r = AES.inverse_mixcolumns(state_r)
+            else:
+                print "IS LAST DEC"
 
         return state_r
 
@@ -321,7 +337,7 @@ class AES:
 
     @staticmethod
     def inverse_mixcolumns(S):
-        M = deepcopy(S)
+        M =  [[0 for x in range(4)] for x in range(4)]
 
         """
 
@@ -349,7 +365,8 @@ class AES:
 
     @staticmethod
     def mixcolumns(S):
-        M = deepcopy(S)
+
+        M =  [[0 for x in range(4)] for x in range(4)]
 
         """
             Encryption
@@ -437,29 +454,29 @@ if __name__ == "__main__":
     LTB = crypt.getLookupTable()
     ksch = KeySchedule(key, BLKSIZE, LTB)
 
-    # enctxt = ""
-    # for x in range(20):
-    #     plain_t = plain.read_bits_from_file(BLKSIZE)
-    #     output = crypt.encrypt(plain_t, ksch)
-    #     enctxt += _hex(output)
-    #     output.write_to_file(cipherf);
+    enctxt = ""
+    for x in range(20):
+        plain_t = plain.read_bits_from_file(BLKSIZE)
+        output = crypt.encrypt(plain_t, ksch)
+        enctxt += _hex(output)
+        output.write_to_file(cipherf);
 
-    # print enctxt
+    print enctxt
 
-    # cipherf.close()
+    cipherf.close()
 
-    # ####### Decryption test #########
-    # dec = AES(key, BLKSIZE, AES.DECRYPT)
-    # cipher = BitVector(filename='encryptedtext.txt')
-    # bufft = ""
-    # for x in range(20):
-    #     cipher_t = cipher.read_bits_from_file(BLKSIZE)
-    #     output = dec.decrypt(cipher_t, ksch)
-    #     bufft += output.get_text_from_bitvector()
-    #     output.write_to_file(plainf);
+    ####### Decryption test #########
+    dec = AES(key, BLKSIZE, AES.DECRYPT)
+    cipher = BitVector(filename='encryptedtext.txt')
+    bufft = ""
+    for x in range(20):
+        cipher_t = cipher.read_bits_from_file(BLKSIZE)
+        output = dec.decrypt(cipher_t, ksch)
+        bufft += output.get_text_from_bitvector()
+        output.write_to_file(plainf);
 
-    # print bufft
-    # plainf.close()
+    print bufft
+    plainf.close()
 
 
     ###### Tests ######
