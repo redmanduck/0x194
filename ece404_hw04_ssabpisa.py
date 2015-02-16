@@ -66,18 +66,17 @@ class KeySchedule:
 
         self.generate_RC()
 
-        # print "key - " , _hex(self.keybv)
+        print "key - " , _hex(self.keybv)
         # generate NxN state matrix
+        for c in range(self.state_dim):
+            for r in range(self.state_dim):
+                self.statearray[r][c] = BitVector(bitstring=self.keybv[WORD*c + BYTE*r : WORD*c + BYTE*(r+1)])
+
+        print "--------- Input Key Matrix (K) ----------"
         for i in range(self.state_dim):
             for j in range(self.state_dim):
-                self.statearray[j][i] = BitVector(bitstring=self.keybv[WORD*i + BYTE*j : WORD*i + BYTE*(j+1)])
-
-        # print "--------- Input Key Matrix (K) ----------"
-        # for i in range(self.state_dim):
-        #     for j in range(self.state_dim):
-        #         print _hex(self.statearray[i][j]), " | ",
-        #     print
-
+                print _hex(self.statearray[i][j]), " | ",
+            print
 
         #the first four w0...w3
         for n in range(self.state_dim):
@@ -186,7 +185,7 @@ class AES:
         state_r = self.state_array_from_bv128(textbv)
         for i in range(10):
             # print "Encryption Round ", i+1
-            state_r = self.round_process(state_r, keyschedule.get_key_for_round(i+1))
+            state_r = self.round_process(state_r, keyschedule.get_key_for_round(i+1), i==9)
 
         return self.reconstruct_column_wise(state_r)
 
@@ -195,7 +194,7 @@ class AES:
         state_r = self.state_array_from_bv128(textbv)
         for i in range(10):
             # print "Decryption Round ", i+1
-            state_r = self.round_process(state_r, keyschedule.get_key_for_round_decrypt(i+1))
+            state_r = self.round_process(state_r, keyschedule.get_key_for_round_decrypt(i+1), i==9)
 
         return self.reconstruct_column_wise(state_r)
 
@@ -215,7 +214,7 @@ class AES:
             raise Exception("Round Key and BV len not equal!")
         return roundkey_bv ^ bv
 
-    def round_process(self, state_r, roundkey_bv):
+    def round_process(self, state_r, roundkey_bv, IS_LAST):
         if(state_r == None):
             raise Exception("State Array is None")
 
@@ -229,15 +228,20 @@ class AES:
             # SHIFT ROW
             state_r = AES.shiftrows(state_r)
             # MIX COLUMN
-            state_r = AES.mixcolumns(state_r)
+            if(IS_LAST):
+                state_r = AES.mixcolumns(state_r)
 
             # add round KEY
-            g=0
-            for r in range(len(state_r)):
-                for c in range(len(state_r)):
-                    xorkey = keybytes[g]
-                    state_r[r][c] = AES.add_round_key(state_r[r][c], xorkey)
-                    g = g +1
+            # g=0
+            # for c in range(len(state_r)):
+            #     for r in range(len(state_r)):
+            #         xorkey = keybytes[g]
+            #         state_r[r][c] = AES.add_round_key(state_r[r][c], xorkey)
+            #         g = g +1
+
+            temp = self.reconstruct_column_wise(state_r)
+            XK = AES.add_round_key(temp, roundkey_bv)
+            state_r = self.state_array_from_bv128(XK)
 
         else:
             # INV SHIFT ROW
@@ -245,15 +249,21 @@ class AES:
             # INV SUB
             state_r = AES.subbyte(self.getLookupTable(), state_r)
             # ADD RND K
-            g=0
-            for r in range(len(state_r)):
-                for c in range(len(state_r)):
-                    xorkey = keybytes[g]
-                    state_r[r][c] = AES.add_round_key(state_r[r][c], xorkey)
-                    g = g +1
+
+            # g=0
+            # for c in range(len(state_r)):
+            #     for r in range(len(state_r)):
+            #         xorkey = keybytes[g]
+            #         state_r[r][c] = AES.add_round_key(state_r[r][c], xorkey)
+            #         g = g +1
+
+            temp = self.reconstruct_column_wise(state_r)
+            XK = AES.add_round_key(temp, roundkey_bv)
+            state_r = self.state_array_from_bv128(XK)
 
             # INV MIX COLUMN
-            state_r = AES.inverse_mixcolumns(state_r)
+            if(IS_LAST):
+                tate_r = AES.inverse_mixcolumns(state_r)
 
         return state_r
 
@@ -427,29 +437,29 @@ if __name__ == "__main__":
     LTB = crypt.getLookupTable()
     ksch = KeySchedule(key, BLKSIZE, LTB)
 
-    enctxt = ""
-    for x in range(20):
-        plain_t = plain.read_bits_from_file(BLKSIZE)
-        output = crypt.encrypt(plain_t, ksch)
-        enctxt += _hex(output)
-        output.write_to_file(cipherf);
+    # enctxt = ""
+    # for x in range(20):
+    #     plain_t = plain.read_bits_from_file(BLKSIZE)
+    #     output = crypt.encrypt(plain_t, ksch)
+    #     enctxt += _hex(output)
+    #     output.write_to_file(cipherf);
 
-    print enctxt
+    # print enctxt
 
-    cipherf.close()
+    # cipherf.close()
 
-    ####### Decryption test #########
-    dec = AES(key, BLKSIZE, AES.DECRYPT)
-    cipher = BitVector(filename='encryptedtext.txt')
-    bufft = ""
-    for x in range(20):
-        cipher_t = cipher.read_bits_from_file(BLKSIZE)
-        output = dec.decrypt(cipher_t, ksch)
-        bufft += output.get_text_from_bitvector()
-        output.write_to_file(plainf);
+    # ####### Decryption test #########
+    # dec = AES(key, BLKSIZE, AES.DECRYPT)
+    # cipher = BitVector(filename='encryptedtext.txt')
+    # bufft = ""
+    # for x in range(20):
+    #     cipher_t = cipher.read_bits_from_file(BLKSIZE)
+    #     output = dec.decrypt(cipher_t, ksch)
+    #     bufft += output.get_text_from_bitvector()
+    #     output.write_to_file(plainf);
 
-    print bufft
-    plainf.close()
+    # print bufft
+    # plainf.close()
 
 
     ###### Tests ######

@@ -8,6 +8,12 @@ class UnitTest:
     @staticmethod
     def test_round_keys(KeyScheduleObj):
         xkey = KeyScheduleObj.xkey
+        keyList = []
+        for i,item in enumerate(xkey):
+            keyList.append(item.getHexStringFromBitVector())
+
+        print "---------- 44 Words -------------"
+        print keyList
         assert(len(xkey) == 44)
         assert(xkey[40] + xkey[41] + xkey[42] + xkey[43] == KeyScheduleObj.get_key_for_round(10))
         for key in xkey:
