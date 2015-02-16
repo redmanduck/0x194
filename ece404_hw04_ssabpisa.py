@@ -36,7 +36,7 @@ def print_state(M):
     given input byte
 """
 def _getSubstitute(ib, L):
-    if len(ib) > BYTE:
+    if len(ib) != BYTE:
         raise Exception("Input BYTE to find sub is not a byte")
     r = int(ib[0:3])
     c = int(ib[4:7])
@@ -104,16 +104,18 @@ class KeySchedule:
         #perform 1 byte left circular shift
         w << BYTE
         #perform a byte substitution for each byte of the word
+        wf = BitVector(size=0)
         for i in range(4):
-            sub = _getSubstitute(w[BYTE*i : BYTE*i + 7], self.LTB)
+            sub = _getSubstitute(w[i*8:i*8+8], self.LTB)
             #subtitute
-            for j in range(BYTE):
-                w[j + BYTE*i] = sub[j]
+            # for j in range(BYTE):
+            #     w[j + 8*i] = sub[j]
+            wf = wf + sub
 
         #XOR bytes with round const
-        w = self.Rcon[rnd] ^ w
+        wx = self.Rcon[rnd] ^ wf
 
-        return w
+        return wx
 
     def generate_RC(self):
         RC = [BitVector(intVal=1, size=BYTE)]*10
@@ -374,8 +376,10 @@ if __name__ == "__main__":
     UnitTest.test_round_constants(ksch)
     UnitTest.test_sbox(LTB)
 
-    plain_t = plain.read_bits_from_file(BLKSIZE)
-    output = crypt.encrypt(plain_t, ksch)
-    print len(output), "bits cipher: ", _hex(output)
-    print "as base64: ", b64encode(output.get_text_from_bitvector())
-    print "plain:",  plain_t.get_text_from_bitvector()
+    enctxt = ""
+    for x in range(20):
+        plain_t = plain.read_bits_from_file(BLKSIZE)
+        output = crypt.encrypt(plain_t, ksch)
+        enctxt += _hex(output)
+
+    print enctxt
