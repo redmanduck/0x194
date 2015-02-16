@@ -63,6 +63,7 @@ class KeySchedule:
         self.LTB = LTB
 
         self.generate_RC()
+
         print "key - " , _hex(self.keybv)
         # generate NxN state matrix
         for i in range(self.state_dim):
@@ -76,7 +77,7 @@ class KeySchedule:
             print
 
 
-        #the first four w0...dim-1
+        #the first four w0...w3
         for n in range(self.state_dim):
             wn = BitVector(size=0)
             for r in range(self.state_dim):
@@ -85,7 +86,7 @@ class KeySchedule:
 
 
 
-        # expand {w0...w3} to {w0...w43}
+        # expand {w0...w3} -> {w0...w43} for the 10 rounds
         for i in range(10):
             self.expand(i)
 
@@ -110,17 +111,14 @@ class KeySchedule:
                 w[j + BYTE*i] = sub[j]
 
         #XOR bytes with round const
-        w = self.Rcon[rnd - 1] ^ w
-
+        w = self.Rcon[rnd] ^ w
 
         return w
 
     def generate_RC(self):
-        n = 8  # indicate we are in GF(2^8)
         RC = [BitVector(intVal=1, size=BYTE)]*10
-        #1 -9
         for j in range(1, 10):
-            RC[j] =  RC[j-1].gf_multiply_modular(BitVector(intVal=2), MODULUS, n)
+            RC[j] =  RC[j-1].gf_multiply_modular(BitVector(intVal=2), MODULUS, 8)
 
         EMPTYBYTE = BitVector(size=BYTE)
         for i in range(10):
@@ -131,14 +129,16 @@ class KeySchedule:
     """
     def expand(self, offset):
         N = self.state_dim
-        rnd = offset+1 #round number
+        rnd = offset #round number
 
         # self.xkey[0][i] gives i-th byte of w0
         w0 = self.g(self.xkey[offset*N + (N - 1)], rnd) ^ self.xkey[offset*N]
+        print "w" + str(len(self.xkey)) + " = " + "g(w%d) ^ w%d" % (offset*N + (N - 1), offset*N)
         self.xkey.append(w0)
 
         for i in range(1,N):
-            wi = self.g(self.xkey[i-1 + (offset+1)*N], rnd) ^ self.xkey[i + offset*N]
+            wi = self.xkey[len(self.xkey) - 1] ^ self.xkey[i + offset*N]
+            print "w" + str(len(self.xkey)) + " = " + "w%d ^ w%d" % (len(self.xkey) - 1, i + offset*N)
             self.xkey.append(wi)
 
     def get_key_for_round(self, i):
@@ -294,12 +294,6 @@ class AES:
                     continue
                 self.LTB[r][c] = self.LTB[r][c].gf_MI(MODULUS, 8)
 
-        print "------ Pre ENC SBOX -------"
-        for r in range(16):
-            for c in range(16):
-                print self.LTB[r][c].intValue(),
-            print
-
         for r in range(16):
             for c in range(16):
                 #bit scramble
@@ -380,8 +374,8 @@ if __name__ == "__main__":
     UnitTest.test_round_constants(ksch)
     UnitTest.test_sbox(LTB)
 
-
     plain_t = plain.read_bits_from_file(BLKSIZE)
     output = crypt.encrypt(plain_t, ksch)
     print len(output), "bits cipher: ", _hex(output)
+    print "as base64: ", b64encode(output.get_text_from_bitvector())
     print "plain:",  plain_t.get_text_from_bitvector()
