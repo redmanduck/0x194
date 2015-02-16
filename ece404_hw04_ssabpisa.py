@@ -11,6 +11,7 @@ from BitVector import *
 import random
 from copy import deepcopy
 from base64 import b64encode
+import utest as test
 
 BYTE = 8
 WORD = 4*BYTE
@@ -313,12 +314,6 @@ class AES:
         M = deepcopy(S)
 
         """
-            Encryption
-
-            [ 2 3 1 1
-              1 2 3 1    x   [S] = [S*]
-              1 1 2 3
-              3 1 1 2 ]
 
             Decryption
 
@@ -354,12 +349,7 @@ class AES:
               1 1 2 3
               3 1 1 2 ]
 
-            Decryption
 
-            [ E B D 9
-              9 E B D    x   [S] = [S*]
-              D 9 E B
-              B D 9 E]
         """
         two = BitVector(intVal=2, size=BYTE)
         three = BitVector(intVal=3, size=BYTE)
@@ -425,55 +415,6 @@ class AES:
                 print self.DLTB[r][c].intValue(),
             print
 
-class UnitTest:
-    @staticmethod
-    def test_round_constants(KeyScheduleObj):
-        assert(len(KeyScheduleObj.Rcon) == 10)
-
-    @staticmethod
-    def test_round_keys(KeyScheduleObj):
-        xkey = KeyScheduleObj.xkey
-        assert(len(xkey) == 44)
-        assert(xkey[40] + xkey[41] + xkey[42] + xkey[43] == KeyScheduleObj.get_key_for_round(10))
-        for key in xkey:
-            assert(len(key) == WORD)
-
-    @staticmethod
-    def test_shiftrow():
-        M = [[None for r in range(4)] for c in range(4)]
-        for i in range(4):
-            for j in range(4):
-                M[j][i] = BitVector(intVal=j,size=BYTE/2)+ BitVector(intVal=i, size=BYTE/2)
-
-        Ms = AES.shiftrows(M)
-
-        assert(Ms[0][0] == M[0][0])
-        assert(Ms[0][1] == M[0][1])
-        assert(Ms[0][2] == M[0][2])
-        assert(Ms[0][3] == M[0][3])
-
-        assert(Ms[1][0] == M[1][1])
-        assert(Ms[1][1] == M[1][2])
-        assert(Ms[1][2] == M[1][3])
-        assert(Ms[1][3] == M[1][0])
-
-        assert(Ms[2][0] == M[2][2])
-        assert(Ms[2][1] == M[2][3])
-        assert(Ms[2][2] == M[2][0])
-        assert(Ms[2][3] == M[2][1])
-
-        assert(Ms[3][0] == M[3][3])
-        assert(Ms[3][1] == M[3][0])
-        assert(Ms[3][2] == M[3][1])
-        assert(Ms[3][3] == M[3][2])
-
-    @staticmethod
-    def test_esbox(LTB):
-        assert(LTB[0][0].intValue() == 99)
-        assert(LTB[0][1].intValue() == 124)
-        assert(LTB[0][2].intValue() == 119)
-        assert(LTB[15][15].intValue() == 22)
-
 
 if __name__ == "__main__":
     key = "lukeimyourfather"
@@ -485,10 +426,6 @@ if __name__ == "__main__":
     crypt = AES(key)
     LTB = crypt.getLookupTable()
     ksch = KeySchedule(key, BLKSIZE, LTB)
-
-    UnitTest.test_round_keys(ksch)
-    UnitTest.test_round_constants(ksch)
-    UnitTest.test_esbox(LTB)
 
     enctxt = ""
     for x in range(20):
@@ -513,3 +450,10 @@ if __name__ == "__main__":
 
     print bufft
     plainf.close()
+
+
+    ###### Tests ######
+
+    test.UnitTest.test_round_keys(ksch)
+    test.UnitTest.test_round_constants(ksch)
+    test.UnitTest.test_esbox(LTB)
