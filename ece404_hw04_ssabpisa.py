@@ -38,8 +38,9 @@ def print_state(M):
 def _getSubstitute(ib, L):
     if len(ib) != BYTE:
         raise Exception("Input BYTE to find sub is not a byte")
-    r = int(ib[0:3])
-    c = int(ib[4:7])
+    r = int(ib[0:4])
+    c = int(ib[5:8])
+    # print "look up " ,r,c
     return L[r][c]
 
 class KeySchedule:
@@ -64,17 +65,17 @@ class KeySchedule:
 
         self.generate_RC()
 
-        print "key - " , _hex(self.keybv)
+        # print "key - " , _hex(self.keybv)
         # generate NxN state matrix
         for i in range(self.state_dim):
             for j in range(self.state_dim):
                 self.statearray[j][i] = BitVector(bitstring=self.keybv[WORD*i + BYTE*j : WORD*i + BYTE*(j+1)])
 
-        print "--------- Input Key Matrix (K) ----------"
-        for i in range(self.state_dim):
-            for j in range(self.state_dim):
-                print _hex(self.statearray[i][j]), " | ",
-            print
+        # print "--------- Input Key Matrix (K) ----------"
+        # for i in range(self.state_dim):
+        #     for j in range(self.state_dim):
+        #         print _hex(self.statearray[i][j]), " | ",
+        #     print
 
 
         #the first four w0...w3
@@ -90,11 +91,11 @@ class KeySchedule:
         for i in range(10):
             self.expand(i)
 
-        print "----------- Expanded Key (W): 44 Words ----------------"
-        for i, wrd in enumerate(self.xkey):
-            print 'w'+str(i), "=",
-            print _hex(wrd), ",",
-        print
+        # print "----------- Expanded Key (W): 44 Words ----------------"
+        # for i, wrd in enumerate(self.xkey):
+        #     print 'w'+str(i), "=",
+        #     print _hex(wrd), ",",
+        # print
 
     def g(self, w, rnd):
 
@@ -135,21 +136,29 @@ class KeySchedule:
 
         # self.xkey[0][i] gives i-th byte of w0
         w0 = self.g(self.xkey[offset*N + (N - 1)], rnd) ^ self.xkey[offset*N]
-        print "w" + str(len(self.xkey)) + " = " + "g(w%d) ^ w%d" % (offset*N + (N - 1), offset*N)
+        # print "w" + str(len(self.xkey)) + " = " + "g(w%d) ^ w%d" % (offset*N + (N - 1), offset*N)
         self.xkey.append(w0)
 
         for i in range(1,N):
             wi = self.xkey[len(self.xkey) - 1] ^ self.xkey[i + offset*N]
-            print "w" + str(len(self.xkey)) + " = " + "w%d ^ w%d" % (len(self.xkey) - 1, i + offset*N)
+            # print "w" + str(len(self.xkey)) + " = " + "w%d ^ w%d" % (len(self.xkey) - 1, i + offset*N)
             self.xkey.append(wi)
 
     def get_key_for_round(self, i):
+        # print "Using encryption key w%d - w%d" % (i*4, i*4+3)
         return self.xkey[i*4] + self.xkey[i*4+1] + self.xkey[i*4+2]  + self.xkey[i*4+3]
 
+    def get_key_for_round_decrypt(self, i):
+        # print "Using decryption key w%d - w%d" % (40 - 4*i, 40 - 4*i + 3)
+        return self.xkey[40 - 4*i] + self.xkey[40 - 4*i + 1] + self.xkey[40 - 4*i + 2]  + self.xkey[40 - 4*i + 3]
 
 class AES:
     LTB = []# look up table
     LTB_SIZE = 16
+
+    DLTB = [] # decrypt ltb
+
+
     ENCRYPT = 'encrypt'
     DECRYPT = 'decrypt'
 
@@ -175,7 +184,17 @@ class AES:
         textbv = AES.add_round_key(textbv , keyschedule.get_key_for_round(0))
         state_r = self.state_array_from_bv128(textbv)
         for i in range(10):
+            # print "Encryption Round ", i+1
             state_r = self.round_process(state_r, keyschedule.get_key_for_round(i+1))
+
+        return self.reconstruct_column_wise(state_r)
+
+    def decrypt(self, textbv, keyschedule):
+        textbv = AES.add_round_key(textbv , keyschedule.get_key_for_round_decrypt(0))
+        state_r = self.state_array_from_bv128(textbv)
+        for i in range(10):
+            # print "Decryption Round ", i+1
+            state_r = self.round_process(state_r, keyschedule.get_key_for_round_decrypt(i+1))
 
         return self.reconstruct_column_wise(state_r)
 
@@ -190,6 +209,8 @@ class AES:
     @staticmethod
     def add_round_key(bv, roundkey_bv):
         if len(bv) != len(roundkey_bv):
+            print bv
+            print roundkey_bv
             raise Exception("Round Key and BV len not equal!")
         return roundkey_bv ^ bv
 
@@ -197,30 +218,69 @@ class AES:
         if(state_r == None):
             raise Exception("State Array is None")
 
-        # SUB BYTE
-        state_r = AES.subbyte(self.getLookupTable(), state_r)
-        # SHIFT ROW
-        state_r = AES.shiftrows(state_r)
-        # MIX COLUMN
-        state_r = AES.mixcolumns(state_r)
-
-
-        # add round KEY
         keybytes = []
         for i in range(16):
             keybytes.append(roundkey_bv[i*8:i*8+8])
-        g=0
-        for r in range(len(state_r)):
-            for c in range(len(state_r)):
-                xorkey = keybytes[g]
-                state_r[r][c] = AES.add_round_key(state_r[r][c], xorkey)
-                g = g +1
+
+        if(self.mode == AES.ENCRYPT):
+            # SUB BYTE
+            state_r = AES.subbyte(self.getLookupTable(), state_r)
+            # SHIFT ROW
+            state_r = AES.shiftrows(state_r)
+            # MIX COLUMN
+            state_r = AES.mixcolumns(state_r)
+
+            # add round KEY
+            g=0
+            for r in range(len(state_r)):
+                for c in range(len(state_r)):
+                    xorkey = keybytes[g]
+                    state_r[r][c] = AES.add_round_key(state_r[r][c], xorkey)
+                    g = g +1
+
+        else:
+            # INV SHIFT ROW
+            state_r = AES.inverse_shiftrows(state_r)
+            # INV SUB
+            state_r = AES.subbyte(self.getLookupTable(), state_r)
+            # ADD RND K
+            g=0
+            for r in range(len(state_r)):
+                for c in range(len(state_r)):
+                    xorkey = keybytes[g]
+                    state_r[r][c] = AES.add_round_key(state_r[r][c], xorkey)
+                    g = g +1
+
+            # INV MIX COLUMN
+            state_r = AES.inverse_mixcolumns(state_r)
 
         return state_r
 
     @staticmethod
+    def inverse_shiftrows(M):
+
+        # print "--------- Inv Shift Row ----------"
+        N = len(M)
+        MF = deepcopy(M)
+        M0 = deepcopy(M)
+
+        for r in range(1,N):
+            for c in range(N):
+                cx = c - r
+                if(cx < 0):
+                    #wrap around
+                    over = 0 - cx
+                    cx = N - over
+
+                # print "(%d, %d) -> (%d, %d)" % (r,c, r, cx)
+                MF[r][c] = M0[r][cx]
+
+        return MF
+
+
+    @staticmethod
     def shiftrows(M):
-        print "--------- Shift Row ----------"
+        # print "--------- Shift Row ----------"
         N = len(M)
         MF = deepcopy(M)
         M0 = deepcopy(M)
@@ -233,7 +293,7 @@ class AES:
                     over = cx - (N-1)
                     cx = over - 1
 
-                print "(%d, %d) -> (%d, %d)" % (r,c, r, cx)
+                # print "(%d, %d) -> (%d, %d)" % (r,c, r, cx)
                 MF[r][c] = M0[r][cx]
 
         return MF
@@ -246,6 +306,41 @@ class AES:
                 state_r[i][j] = cand
 
         return state_r
+
+
+    @staticmethod
+    def inverse_mixcolumns(S):
+        M = deepcopy(S)
+
+        """
+            Encryption
+
+            [ 2 3 1 1
+              1 2 3 1    x   [S] = [S*]
+              1 1 2 3
+              3 1 1 2 ]
+
+            Decryption
+
+            [ E B D 9
+              9 E B D    x   [S] = [S*]
+              D 9 E B
+              B D 9 E]
+        """
+        two = BitVector(intVal=2, size=BYTE)
+        three = BitVector(intVal=3, size=BYTE)
+        E = BitVector(intVal=14, size=BYTE)
+        D = BitVector(intVal=13, size=BYTE)
+        B = BitVector(intVal=11,size=BYTE)
+        nine = BitVector(intVal=9, size=BYTE)
+
+        for j in range(len(S)):
+            M[0][j] = S[0][j].gf_multiply_modular(E, MODULUS, 8) ^ S[1][j].gf_multiply_modular(B, MODULUS, 8) ^ S[2][j].gf_multiply_modular(D, MODULUS, 8) ^ S[3][j].gf_multiply_modular(nine, MODULUS, 8)
+            M[1][j] = S[0][j].gf_multiply_modular(nine, MODULUS, 8) ^ (S[1][j].gf_multiply_modular(E, MODULUS, 8)) ^ (S[2][j].gf_multiply_modular(B, MODULUS, 8)) ^ S[3][j].gf_multiply_modular(D, MODULUS, 8)
+            M[2][j] = S[0][j].gf_multiply_modular(D, MODULUS, 8) ^ S[1][j].gf_multiply_modular(nine, MODULUS, 8) ^ (S[2][j].gf_multiply_modular(E, MODULUS, 8)) ^ (S[3][j].gf_multiply_modular(B, MODULUS, 8))
+            M[3][j] = S[0][j].gf_multiply_modular(B, MODULUS, 8) ^ S[1][j].gf_multiply_modular(D, MODULUS, 8) ^ S[2][j].gf_multiply_modular(nine, MODULUS, 8) ^ S[3][j].gf_multiply_modular(E, MODULUS, 8)
+
+        return M
 
     @staticmethod
     def mixcolumns(S):
@@ -282,10 +377,16 @@ class AES:
         return M
 
     def getLookupTable(self):
-        return self.LTB
+
+        if(self.mode == self.ENCRYPT):
+           return self.LTB
+        return self.DLTB
+
 
     def generate_lookup_table(self):
         self.LTB = [[(BitVector(size=4,intVal=r) + BitVector(size=4,intVal=c)) for c in range(self.LTB_SIZE)] for r in range(self.LTB_SIZE)]
+        self.DLTB = [[(BitVector(size=4,intVal=r) + BitVector(size=4,intVal=c)) for c in range(self.LTB_SIZE)] for r in range(self.LTB_SIZE)]
+
         # replace with MI
         print "Generating LTB.."
         #affine
@@ -300,10 +401,16 @@ class AES:
             for c in range(16):
                 #bit scramble
                 cbyte = BitVector(bitstring='01100011') #0x63
+                dbyte = BitVector(bitstring='00000101')
                 #for i in range(8):
                 #    self.LTB[r][c][i] = LRC[i] ^ LRC[(i+4) % 8] ^ LRC[(i+5) % 8] ^ LRC[(i+6) % 8] ^ LRC[(i+7) % 8] ^ cbyte[i]
                 a1,a2,a3,a4 = [self.LTB[r][c].deep_copy() for x in range(4)]
                 self.LTB[r][c] ^= (a1 >> 4) ^ (a2 >> 5) ^ (a3 >> 6) ^ (a4 >> 7) ^ cbyte
+                b1,b2,b3 = [self.DLTB[r][c].deep_copy() for x in range(3)]
+                b = (b1 >> 2) ^ (b2 >> 5) ^ (b3 >> 7) ^ dbyte
+                check = b.gf_MI(MODULUS, 8)
+                b = check if isinstance(check, BitVector) else BitVector(intVal=0,size=BYTE)
+                self.DLTB[r][c] = b
 
         print "------ ENC SBOX -------"
         for r in range(16):
@@ -312,6 +419,11 @@ class AES:
             print
 
 
+        print "------ DEC SBOX -------"
+        for r in range(16):
+            for c in range(16):
+                print self.DLTB[r][c].intValue(),
+            print
 
 class UnitTest:
     @staticmethod
@@ -356,7 +468,7 @@ class UnitTest:
         assert(Ms[3][3] == M[3][2])
 
     @staticmethod
-    def test_sbox(LTB):
+    def test_esbox(LTB):
         assert(LTB[0][0].intValue() == 99)
         assert(LTB[0][1].intValue() == 124)
         assert(LTB[0][2].intValue() == 119)
@@ -367,6 +479,8 @@ if __name__ == "__main__":
     key = "lukeimyourfather"
     BLKSIZE = 128
     plain = BitVector(filename='plaintext.txt')
+    cipherf = open('encryptedtext.txt', 'wb')
+    plainf = open('decryptedtext.txt', 'w')
 
     crypt = AES(key)
     LTB = crypt.getLookupTable()
@@ -374,12 +488,28 @@ if __name__ == "__main__":
 
     UnitTest.test_round_keys(ksch)
     UnitTest.test_round_constants(ksch)
-    UnitTest.test_sbox(LTB)
+    UnitTest.test_esbox(LTB)
 
     enctxt = ""
     for x in range(20):
         plain_t = plain.read_bits_from_file(BLKSIZE)
         output = crypt.encrypt(plain_t, ksch)
         enctxt += _hex(output)
+        output.write_to_file(cipherf);
 
     print enctxt
+
+    cipherf.close()
+
+    ####### Decryption test #########
+    dec = AES(key, BLKSIZE, AES.DECRYPT)
+    cipher = BitVector(filename='encryptedtext.txt')
+    bufft = ""
+    for x in range(20):
+        cipher_t = cipher.read_bits_from_file(BLKSIZE)
+        output = dec.decrypt(cipher_t, ksch)
+        bufft += output.get_text_from_bitvector()
+        output.write_to_file(plainf);
+
+    print bufft
+    plainf.close()
