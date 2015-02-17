@@ -224,7 +224,7 @@ class AES:
 
         for i in range(10):
             print "Encryption Round ", i+1
-            raw_input("Enter to continue..")
+            #raw_input("Enter to continue..")
             state_r = self.round_process(state_r, keyschedule.get_key_for_round(i+1), i==9)
 
         return self.reconstruct_column_wise(state_r)
@@ -259,7 +259,7 @@ class AES:
             raise Exception("State Array is None")
         print "Start of Round State: "
         print_state(state_r)
-        raw_input("Enter to continue..")
+        #raw_input("Enter to continue..")
 
         # keybytes = []
         # for i in range(16):
@@ -270,12 +270,12 @@ class AES:
             state_r = AES.subbyte(self.getLookupTable(), state_r)
             print "After SubByte: "
             print_state(state_r)
-            raw_input("Enter to continue..")
+            #raw_input("Enter to continue..")
             # SHIFT ROW
             state_r = AES.shiftrows(state_r)
             print "After Shiftrow: "
             print_state(state_r)
-            raw_input("Enter to continue..")
+            #raw_input("Enter to continue..")
             # MIX COLUMN
             if not IS_LAST:
                 print "IS NOT LAST ENC"
@@ -285,7 +285,7 @@ class AES:
 
             print "After MixColumn (or not): "
             print_state(state_r)
-            raw_input("Enter to continue..")
+            #raw_input("Enter to continue..")
 
             # add round KEY
             # g=0
@@ -303,7 +303,7 @@ class AES:
 
             print "After Added with RK :"
             print_state(state_r)
-            raw_input("Enter to continue..")
+            #raw_input("Enter to continue..")
 
         else:
             # INV SHIFT ROW
@@ -326,7 +326,7 @@ class AES:
             # INV MIX COLUMN
             if not IS_LAST:
                 print "IS NOT LAST DEC"
-                tate_r = AES.inverse_mixcolumns(state_r)
+                state_r = AES.inverse_mixcolumns(state_r)
             else:
                 print "IS LAST DEC"
 
@@ -493,7 +493,7 @@ class AES:
 
 
 if __name__ == "__main__":
-    key = BitVector(hexstring='2b7e151628aed2a6abf7158809cf4f3c').get_text_from_bitvector()
+    key = 'lukeimyourfather' #BitVector(hexstring='2b7e151628aed2a6abf7158809cf4f3c').get_text_from_bitvector()
     BLKSIZE = 128
     plain = BitVector(filename='plaintext.txt')
     cipherf = open('encryptedtext.txt', 'wb')
@@ -510,28 +510,37 @@ if __name__ == "__main__":
         print _hex(rc)
 
     enctxt = ""
-    # for x in range(20):
-    plain_t = mockplaintext
-    output = crypt.encrypt(plain_t, ksch)
-    enctxt += _hex(output)
-    output.write_to_file(cipherf);
+    notdone = True
+    while(notdone):
+        # plain_t = mockplaintext
+        plain_t = plain.read_bits_from_file(BLKSIZE)
+        if(len(plain_t) < BLKSIZE):
+            plain_t.pad_from_right(BLKSIZE - len(plain_t))
+            notdone = False
+        output = crypt.encrypt(plain_t, ksch)
+        enctxt += _hex(output)
+        output.write_to_file(cipherf);
 
     print enctxt
 
     cipherf.close()
 
     ###### Decryption test #########
-    # dec = AES(key, BLKSIZE, AES.DECRYPT)
-    # cipher = BitVector(filename='encryptedtext.txt')
-    # bufft = ""
-    # for x in range(20):
-    #     cipher_t = cipher.read_bits_from_file(BLKSIZE)
-    #     output = dec.decrypt(cipher_t, ksch)
-    #     bufft += output.get_text_from_bitvector()
-    #     output.write_to_file(plainf);
+    dec = AES(key, BLKSIZE, AES.DECRYPT)
+    cipher = BitVector(filename='encryptedtext.txt')
+    bufft = ""
+    notdone = True
+    while(notdone):
+        cipher_t = cipher.read_bits_from_file(BLKSIZE)
+        if(len(cipher_t) < BLKSIZE):
+            cipher_t.pad_from_right(BLKSIZE - len(cipher_t))
+            notdone = False
+        output = dec.decrypt(cipher_t, ksch)
+        bufft += output.get_text_from_bitvector()
+        output.write_to_file(plainf);
 
-    # print bufft
-    # plainf.close()
+    print bufft
+    plainf.close()
 
 
     # ###### Tests ######
