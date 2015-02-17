@@ -1,1 +1,2 @@
 # DES 
+ECB Mode
