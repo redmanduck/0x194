@@ -40,7 +40,7 @@ def _getSubstitute(ib, L):
     if len(ib) != BYTE:
         raise Exception("Input BYTE to find sub is not a byte")
     r = int(ib[0:4])
-    c = int(ib[5:8])
+    c = int(ib[4:8])
     # print "look up " ,r,c
     return L[r][c]
 
@@ -73,18 +73,21 @@ class KeySchedule:
                 self.statearray[r][c] = BitVector(bitstring=self.keybv[WORD*c + BYTE*r : WORD*c + BYTE*(r+1)])
 
         print "--------- Input Key Matrix (K) ----------"
-        for i in range(self.state_dim):
-            for j in range(self.state_dim):
-                print _hex(self.statearray[i][j]), " | ",
+        for r in range(self.state_dim):
+            for c in range(self.state_dim):
+                print _hex(self.statearray[r][c]), " | ",
             print
 
         #the first four w0...w3
-        for n in range(self.state_dim):
+        for c in range(4):
             wn = BitVector(size=0)
-            for r in range(self.state_dim):
-                wn += self.statearray[r][n]
+            for r in range(4):
+                wn += self.statearray[r][c]
             self.xkey.append(wn)
 
+
+        for key in self.xkey:
+            print _hex(key)
 
 
         # expand {w0...w3} -> {w0...w43} for the 10 rounds
@@ -97,24 +100,31 @@ class KeySchedule:
         #     print _hex(wrd), ",",
         # print
 
-    def g(self, w, rnd):
-
+    def g(self, k, rnd):
+        print "g(", _hex(k), ")",
+        w = deepcopy(k)
         #check if w is 4 byte
         if(len(w) != 4*BYTE):
             raise Exception("g(word), word is not 4 byte!")
         #perform 1 byte left circular shift
         w << BYTE
+        print "after rot = ", _hex(w),
         #perform a byte substitution for each byte of the word
         wf = BitVector(size=0)
-        for i in range(4):
-            sub = _getSubstitute(w[i*8:i*8+8], self.LTB)
-            #subtitute
-            # for j in range(BYTE):
-            #     w[j + 8*i] = sub[j]
-            wf = wf + sub
+
+        wf += _getSubstitute(w[0:8], self.LTB)
+        wf += _getSubstitute(w[8:16], self.LTB)
+        wf += _getSubstitute(w[16:16+8], self.LTB)
+        wf += _getSubstitute(w[16+8:32], self.LTB)
+
+        print "after sub = ", _hex(wf),
 
         #XOR bytes with round const
-        wx = self.Rcon[rnd] ^ wf
+        usercon = self.Rcon[rnd]
+        print "rcon i = ", _hex(usercon),
+        wx = usercon ^ wf
+
+        print "after $rcon", _hex(wx),
 
         return wx
 
@@ -124,7 +134,7 @@ class KeySchedule:
             RC[j] =  RC[j-1].gf_multiply_modular(BitVector(intVal=2), MODULUS, 8)
 
         EMPTYBYTE = BitVector(size=BYTE)
-        self.Rcon.append(EMPTYBYTE + EMPTYBYTE + EMPTYBYTE + EMPTYBYTE)
+        self.Rcon.append(RC[0] + EMPTYBYTE + EMPTYBYTE + EMPTYBYTE)
         for i in range(1,10):
             self.Rcon.append(RC[i] + EMPTYBYTE + EMPTYBYTE + EMPTYBYTE)
 
@@ -144,13 +154,24 @@ class KeySchedule:
 
         i = len(self.xkey)
         # self.xkey[0][i] gives i-th byte of w0
-        w0 = self.g(self.xkey[i  -1 ], rnd) ^ self.xkey[i-4]
+        tmp = self.g(self.xkey[i -1], rnd)
+        wink = self.xkey[i-4]
+        print " tmp ", _hex(tmp),
+        print " W[i-nk]", _hex(wink),
+
+        w0 = tmp ^ wink
+        print " w[i] = ", _hex(w0)
         # print "w" + str(len(self.xkey)) + " = " + "g(w%d) ^ w%d" % (offset*N + (N - 1), offset*N)
         self.xkey.append(w0)
 
         for i in range(1,N):
             x = len(self.xkey)
-            wi = self.xkey[x - 1] ^ self.xkey[x - 4]
+            tmp = self.xkey[x - 1]
+            wink = self.xkey[x - 4]
+            print "tmp = ", _hex(tmp),
+            print "wnk = ", _hex(wink),
+            wi = tmp ^ wink
+            print "W[i] = " , _hex(wi)
             # print "w" + str(len(self.xkey)) + " = " + "w%d ^ w%d" % (len(self.xkey) - 1, i + offset*N)
             self.xkey.append(wi)
 
@@ -191,10 +212,19 @@ class AES:
         return M
 
     def encrypt(self, textbv, keyschedule):
+        inputt = self.state_array_from_bv128(textbv)
+        print "> INPUT : "
+        print_state(inputt)
+        print " round key ", _hex(keyschedule.get_key_for_round(0))
         textbv = AES.add_round_key(textbv , keyschedule.get_key_for_round(0))
         state_r = self.state_array_from_bv128(textbv)
+        print "> Added with RK: "
+        print_state(state_r)
+
+
         for i in range(10):
-            # print "Encryption Round ", i+1
+            print "Encryption Round ", i+1
+            raw_input("Enter to continue..")
             state_r = self.round_process(state_r, keyschedule.get_key_for_round(i+1), i==9)
 
         return self.reconstruct_column_wise(state_r)
@@ -227,22 +257,35 @@ class AES:
     def round_process(self, state_r, roundkey_bv, IS_LAST):
         if(state_r == None):
             raise Exception("State Array is None")
+        print "Start of Round State: "
+        print_state(state_r)
+        raw_input("Enter to continue..")
 
-        keybytes = []
-        for i in range(16):
-            keybytes.append(roundkey_bv[i*8:i*8+8])
+        # keybytes = []
+        # for i in range(16):
+        #     keybytes.append(roundkey_bv[i*8:i*8+8])
 
         if(self.mode == AES.ENCRYPT):
             # SUB BYTE
             state_r = AES.subbyte(self.getLookupTable(), state_r)
+            print "After SubByte: "
+            print_state(state_r)
+            raw_input("Enter to continue..")
             # SHIFT ROW
             state_r = AES.shiftrows(state_r)
+            print "After Shiftrow: "
+            print_state(state_r)
+            raw_input("Enter to continue..")
             # MIX COLUMN
             if not IS_LAST:
                 print "IS NOT LAST ENC"
                 state_r = AES.mixcolumns(state_r)
             else:
                 print "IS LAST ENC"
+
+            print "After MixColumn (or not): "
+            print_state(state_r)
+            raw_input("Enter to continue..")
 
             # add round KEY
             # g=0
@@ -252,9 +295,15 @@ class AES:
             #         state_r[r][c] = AES.add_round_key(state_r[r][c], xorkey)
             #         g = g +1
 
+            print "Round Key", _hex(roundkey_bv)
+
             temp = self.reconstruct_column_wise(state_r)
             XK = AES.add_round_key(temp, roundkey_bv)
             state_r = self.state_array_from_bv128(XK)
+
+            print "After Added with RK :"
+            print_state(state_r)
+            raw_input("Enter to continue..")
 
         else:
             # INV SHIFT ROW
@@ -444,43 +493,49 @@ class AES:
 
 
 if __name__ == "__main__":
-    key = "lukeimyourfather"
+    key = BitVector(hexstring='2b7e151628aed2a6abf7158809cf4f3c').get_text_from_bitvector()
     BLKSIZE = 128
     plain = BitVector(filename='plaintext.txt')
     cipherf = open('encryptedtext.txt', 'wb')
     plainf = open('decryptedtext.txt', 'w')
 
+
+    mockplaintext = BitVector(hexstring='3243f6a8885a308d313198a2e0370734')
+    print len(mockplaintext) , "bits data"
     crypt = AES(key)
-    LTB = crypt.getLookupTable()
-    ksch = KeySchedule(key, BLKSIZE, LTB)
+    LTB = crypt.getLookupTable()           # LTB is correct
+    ksch = KeySchedule(key, BLKSIZE, LTB)  #Key schedule is correct
+
+    for rc in ksch.Rcon:
+        print _hex(rc)
 
     enctxt = ""
-    for x in range(20):
-        plain_t = plain.read_bits_from_file(BLKSIZE)
-        output = crypt.encrypt(plain_t, ksch)
-        enctxt += _hex(output)
-        output.write_to_file(cipherf);
+    # for x in range(20):
+    plain_t = mockplaintext
+    output = crypt.encrypt(plain_t, ksch)
+    enctxt += _hex(output)
+    output.write_to_file(cipherf);
 
     print enctxt
 
     cipherf.close()
 
-    ####### Decryption test #########
-    dec = AES(key, BLKSIZE, AES.DECRYPT)
-    cipher = BitVector(filename='encryptedtext.txt')
-    bufft = ""
-    for x in range(20):
-        cipher_t = cipher.read_bits_from_file(BLKSIZE)
-        output = dec.decrypt(cipher_t, ksch)
-        bufft += output.get_text_from_bitvector()
-        output.write_to_file(plainf);
+    ###### Decryption test #########
+    # dec = AES(key, BLKSIZE, AES.DECRYPT)
+    # cipher = BitVector(filename='encryptedtext.txt')
+    # bufft = ""
+    # for x in range(20):
+    #     cipher_t = cipher.read_bits_from_file(BLKSIZE)
+    #     output = dec.decrypt(cipher_t, ksch)
+    #     bufft += output.get_text_from_bitvector()
+    #     output.write_to_file(plainf);
 
-    print bufft
-    plainf.close()
+    # print bufft
+    # plainf.close()
 
 
-    ###### Tests ######
+    # ###### Tests ######
 
     test.UnitTest.test_round_keys(ksch)
-    test.UnitTest.test_round_constants(ksch)
-    test.UnitTest.test_esbox(LTB)
+    # test.UnitTest.test_round_constants(ksch)
+    # test.UnitTest.test_esbox(LTB)
