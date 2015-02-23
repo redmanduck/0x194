@@ -1,6 +1,8 @@
 #!/usr/bin/python
 #
 from BitVector import *
+from math import floor
+
 class RC4:
 	def __init__(self, key):
 		if(len(key) != 16):
@@ -28,8 +30,10 @@ class RC4:
 	def encrypt(self,Image):
 		i =  0
 		j = 0
-		for r in Image:
-			for c in Image:
+		EImage = []
+		for r in range(len(Image)):
+			row = []
+			for c in range(len(Image[r])):
 				i = (i+1) % 256
 				j = (j+self.S[i]) % 256
 				temp  =	self.S[i]
@@ -38,8 +42,10 @@ class RC4:
 				k = (self.S[i] + self.S[j]) % 256
 				random_byte = self.S[k]
 
-				# print "RBYTE" , random_byte
-				# print "IBYTE" , Image[r][c]
+				Xbyte =  Image[r][c] ^ random_byte
+				row.append(Xbyte)
+			EImage.append(row)
+		return EImage
 
 	@staticmethod
 	def loadPPM(filename):
@@ -59,7 +65,18 @@ class RC4:
 			image.append(row)
 		return headers, image
 
+	@staticmethod
+	def writePPM(headlist, Image, filename):
+		f = open(filename, "wb")
+		f.writelines(headlist)
+		for i in range(len(Image)):
+			for j in range(len(Image[i])):
+				f.write(chr(Image[i][j]))
+
+		f.close()
+
 if __name__ == "__main__":
 	originalHead, originalImage = RC4.loadPPM("Tiger2.ppm")
 	rc4cipher = RC4("abcdefghaaaabbbb")
-	rc4cipher.encrypt(originalImage)
+	encryptedImage = rc4cipher.encrypt(originalImage)
+	RC4.writePPM(originalHead, encryptedImage, "Tiger_enc.ppm")
