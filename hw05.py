@@ -2,6 +2,7 @@
 #
 from BitVector import *
 from math import floor
+from copy import deepcopy
 
 class RC4:
 	def __init__(self, key):
@@ -27,25 +28,48 @@ class RC4:
 
 		del self.T
 
-	def encrypt(self,Image):
+
+	def reset_randombyte():
+		self.rbytes = []
+
+	def generate_randombyte_stream(self, Image):
 		i =  0
 		j = 0
-		EImage = []
+		self.rbytes = []
+		S = deepcopy(self.S)
 		for r in range(len(Image)):
 			row = []
 			for c in range(len(Image[r])):
 				i = (i+1) % 256
-				j = (j+self.S[i]) % 256
-				temp  =	self.S[i]
-				self.S[i] = self.S[j]
-				self.S[j] = temp
-				k = (self.S[i] + self.S[j]) % 256
-				random_byte = self.S[k]
+				j = (j+S[i]) % 256
+				temp  =	S[i]
+				S[i] = S[j]
+				S[j] = temp
+				k = (S[i] + S[j]) % 256
+				random_byte = S[k]
+				self.rbytes.append(random_byte)
 
-				Xbyte =  Image[r][c] ^ random_byte
+	def encrypt(self,Image, gen_random=True):
+		EImage = []
+		
+		if(gen_random):
+			self.generate_randombyte_stream(Image)
+
+		i = 0
+		for r in range(len(Image)):
+			row = []
+			for c in range(len(Image[r])):
+				random_byte = self.rbytes[i]
+				i += 1
+
+				Xbyte =  Image[r][c] ^ random_byte 
 				row.append(Xbyte)
 			EImage.append(row)
 		return EImage
+
+	def decrypt(self, Image):
+		return self.encrypt(Image, False)
+
 
 	@staticmethod
 	def loadPPM(filename):
@@ -78,5 +102,13 @@ class RC4:
 if __name__ == "__main__":
 	originalHead, originalImage = RC4.loadPPM("Tiger2.ppm")
 	rc4cipher = RC4("abcdefghaaaabbbb")
+	print "encrypting.."
 	encryptedImage = rc4cipher.encrypt(originalImage)
 	RC4.writePPM(originalHead, encryptedImage, "Tiger_enc.ppm")
+	print "decrypting.."
+	decryptedImage = rc4cipher.encrypt(encryptedImage, False)
+	RC4.writePPM(originalHead, decryptedImage, "Tiger_dec.ppm")
+
+	assert(encryptedImage != decryptedImage)
+	assert(encryptedImage != originalImage)
+	assert(decryptedImage == originalImage)
