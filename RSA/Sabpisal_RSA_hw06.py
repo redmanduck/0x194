@@ -21,6 +21,21 @@ class Key:
             ob["d"] = self.d
 
         f.write(json.dumps(ob))
+        f.close()
+
+    def fromFile(self, filename):
+        f = open(filename, 'r')
+        ob = json.loads(f.read())
+        for k in ob:
+            if k == "e":
+                self.e = ob[k]
+            elif k == "n":
+                self.n = ob[k]
+            elif k == "d":
+                self.d = ob[k]
+
+        f.close()
+
 
 
 class PublicKey(Key):
@@ -140,6 +155,8 @@ def fwrite(blocklist, filename, blocksize=128):
     return strbuf
 
 if __name__ == "__main__":
+
+
     R = RSADuck()
     private, public = R.get_keys()
 
