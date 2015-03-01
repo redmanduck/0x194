@@ -4,13 +4,31 @@
 from PrimeGenerator import PrimeGenerator
 from BitVector import *
 from Factorize import gcd
+import json
 
-class PublicKey:
+class Key:
+    e = 0
+    n = 0
+    d = 0
+    def toFile(self, filename):
+        f = open(filename, 'w')
+        ob = {}
+        if(self.e != 0):
+            ob["e"] = self.e
+        if(self.n != 0):
+            ob["n"] = self.n
+        if(self.d != 0):
+            ob["d"] = self.d
+
+        f.write(json.dumps(ob))
+
+
+class PublicKey(Key):
     def __init__(self,e,n):
         self.e = e;
         self.n = n;
 
-class PrivateKey:
+class PrivateKey(Key):
     def __init__(self,d,n):
         self.d = d;
         self.n = n;
@@ -53,39 +71,81 @@ class RSADuck:
 
     #
     #
-    #  M is an integer
     #  encrypt by calculating
     #  M^e mod n --> C
-    # key is PublicKey
+    #  key is PublicKey
     def encrypt_with_publickey(s, M_str, key):
 
         EC = [] #encrypted blocks
+        nline = BitVector(textstring="\n")
 
         # read 16 character (128 bits) at a time
         Mbv = BitVector(textstring=M_str)
         for i in range(0, len(Mbv), 8):
             M_block = Mbv[i:i+8]
+
+            while(len(M_block) < 128):
+                M_block = M_block + nline;
+
             M_block.pad_from_left(128)
+
             C = pow(int(M_block), s.e, key.n)
             EC.append(C)
 
         return EC
 
-    def decrypt_with_privatekey(s, M, key):
-        return None
 
-    def get_public_key(s):
-        return PublicKey(s.e, s.n)
+    #
+    #  
+    #  decrypt by
+    #  k is Private Key
+    #  C is message encrypted with public key
+    #  C^k.d mod k.n, k.d is private exponent
+    #
+    def decrypt_with_privatekey(s, C, key):
+        # we need to know prime factor p, q of modulus n (n = p*q)
+        # C^d is congruent to C mod n
+        # unlocker must have key with d that is f(phi(n)), phi(n) is f(p,q), where
+        # two prime factors of n are coprime to e
+        # phi = (p-1)*(q-1)
+        # n = p*q
+        # d = MI(phi)
 
-    def get_private_key(s):
-        return PrivateKey(s.d, s.n)
+        # challenge is to find p and q (?)
 
-    @staticmethod
-    def modular_exponentiate(a,x):
-        # use CRT
-        pass
+        Vp = pow(C, d, p)
+        Vq = pow(C, d, q)
 
+        Xp = q*MI(q,p)
+        Xq = p*MI(p, q)
+        C_raise_d = (Vp*Xp + Vq*Xq) % n 
+
+    def get_keys(s):
+        return (PrivateKey(s.d, s.n), PublicKey(s.e, s.n))
+
+
+#
+# blocksize is size in bit per block in block list
+#
+def fwrite(blocklist, filename, blocksize=128):
+    strbuf = ""
+    f = open(filename, "w")
+    for block in blocklist:
+        bv = BitVector(intVal= block, size=blocksize)
+        tmp = bv.get_text_from_bitvector()
+        f.write(tmp)
+        strbuf = strbuf + tmp
+    f.close()
+
+    return strbuf
 
 if __name__ == "__main__":
     R = RSADuck()
-    print R.encrypt_with_publickey("xyello", R.get_public_key())
+    private, public = R.get_keys()
+
+    private.toFile("private.jkey")
+    public.toFile("public.jkey")
+
+    eblob = R.encrypt_with_publickey("xyello", public)
+    enctxt = fwrite(eblob, "test_enc.txt", 256)
+    print enctxt
