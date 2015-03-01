@@ -5,6 +5,16 @@ from PrimeGenerator import PrimeGenerator
 from BitVector import *
 from Factorize import gcd
 
+class PublicKey:
+    def __init__(self,e,n):
+        self.e = e;
+        self.n = n;
+
+class PrivateKey:
+    def __init__(self,d,n):
+        self.d = d;
+        self.n = n;
+
 class RSADuck:
     def __init__(s, e=65537):
         s.e = e # public exponent is 1 < e < phi_n , gcd(phi_n ,e) = 1
@@ -31,6 +41,9 @@ class RSADuck:
         cond4 = (gcd(q-1, s.e) == 1)
         return cond1 and cond2 and cond3 and cond4
 
+    #
+    #  Compute private exponent
+    #
     def compute_d(s):
         # d = e^-1 mod phi_n
         # aka d is multiplicative inverse of phi_n
@@ -38,24 +51,26 @@ class RSADuck:
         bv_e = BitVector(intVal = s.e)
         return int(bv_e.multiplicative_inverse(bv_phi))
 
+    #
+    #
+    #  M is an integer
+    #  encrypt by calculating
+    #  M^e mod n --> C
+    # key is PublicKey
+    def encrypt_with_publickey(s, M_str, key):
+        # read 16 character at a time
+        
+        C = pow(M_block, s.e, key.n)
+        return C
 
-    def D():
-        pass
-
-    def E():
-        pass
-
-    def encrypt(self, M, PRa, PUb):
-        pass
-
-    def decrypt(self, C, PRb, PUa):
-        pass
+    def decrypt_with_privatekey(s, M, key):
+        return None
 
     def get_public_key(s):
-        return [s.e, s.n]
+        return PublicKey(s.e, s.n)
 
     def get_private_key(s):
-        return [s.d, s.n]
+        return PrivateKey(s.d, s.n)
 
     @staticmethod
     def modular_exponentiate(a,x):
