@@ -1,5 +1,5 @@
 #
-#  RSA Duck
+#  256-RSA algorithm
 #
 from PrimeGenerator import PrimeGenerator
 from BitVector import *
@@ -58,10 +58,18 @@ class RSADuck:
     #  M^e mod n --> C
     # key is PublicKey
     def encrypt_with_publickey(s, M_str, key):
-        # read 16 character at a time
-        
-        C = pow(M_block, s.e, key.n)
-        return C
+
+        EC = [] #encrypted blocks
+
+        # read 16 character (128 bits) at a time
+        Mbv = BitVector(textstring=M_str)
+        for i in range(0, len(Mbv), 8):
+            M_block = Mbv[i:i+8]
+            M_block.pad_from_left(128)
+            C = pow(int(M_block), s.e, key.n)
+            EC.append(C)
+
+        return EC
 
     def decrypt_with_privatekey(s, M, key):
         return None
@@ -79,4 +87,5 @@ class RSADuck:
 
 
 if __name__ == "__main__":
-    duck = RSADuck()
+    R = RSADuck()
+    print R.encrypt_with_publickey("xyello", R.get_public_key())
