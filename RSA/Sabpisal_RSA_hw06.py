@@ -156,13 +156,14 @@ class RSADuck:
         return {"p": self.p, "q": self.q}
 
 
+
 def jsonwrite(js, filename):
     f = open(filename, "w")
     f.write(json.dumps(js))
     f.close()
 
-def jsonread(js, filename):
-    f = open(filename, "w")
+def jsonread( filename):
+    f = open(filename, "r")
     L = f.read()
     f.close()
     return json.loads(L)
@@ -182,17 +183,35 @@ def fwrite(blocklist, filename):
 
 if __name__ == "__main__":
 
-    R = RSADuck(e=3)
-    private, public = R.get_keys()
-    PQPair = R.getPQ()
-    private.toFile("private.json")
-    public.toFile("public.json")
-    jsonwrite(PQPair, "pq.json")
+    if(len(sys.argv) < 4):
+        print "Usage: Sabpisal_RSA_hw06.py -[mode] -[src] -[dest]"
+        print "mode: e for encrypt, d for decrypt"
+        sys.exit(1)
 
-    eblob = R.encrypt_with_publickey("HelloWorld", public)
-    enctxt = fwrite(eblob, "test_enc.txt")
-    
-    dblob = R.decrypt_with_privatekey(enctxt, private, PQPair['p'], PQPair['q'])
-    dectxt = fwrite(dblob, "test_dec.txt")
+    R = RSADuck()
 
-    print dectxt
+    msg = open(sys.argv[2] , "r")
+
+    if(sys.argv[1] == "-e"):
+        private, public = R.get_keys()
+        PQPair = R.getPQ()
+
+        private.toFile("private.json")
+        public.toFile("public.json")
+        jsonwrite(PQPair, "pq.json")
+
+        eblob = R.encrypt_with_publickey(msg.read(), public)
+        enctxt = fwrite(eblob, sys.argv[3])
+
+    elif(sys.argv[1] == "-d"):
+        private = PrivateKey(0,0)
+        private.fromFile("private.json")
+        public = PublicKey(0,0)
+        public.fromFile("public.json")
+        PQPair = jsonread("pq.json")
+        dblob = R.decrypt_with_privatekey(msg.read(), private, PQPair['p'], PQPair['q'])
+        dectxt = fwrite(dblob, "test_dec.txt")
+        print dectxt
+
+    msg.close()
+
