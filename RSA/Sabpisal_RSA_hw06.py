@@ -61,6 +61,7 @@ class RSADuck:
         q = p
         while(not self.pqvalid(p,q)):
             q = G.findPrime()
+            p = G.findPrime()
         n = p*q
 
         return (p,q,n)
@@ -69,7 +70,7 @@ class RSADuck:
         p2 = bin(p)[2:][0:2]
         q2 = bin(q)[2:][0:2]
         cond1 = (p2 == q2) and (p2 == '11')
-        cond2 = (p == q)
+        cond2 = (p != q)
         cond3 = (gcd((p-1), s.e) == 1)  # (p-1) and (q-1) is coprime to e
         cond4 = (gcd(q-1, s.e) == 1)
         return cond1 and cond2 and cond3 and cond4
@@ -96,8 +97,8 @@ class RSADuck:
 
         # read 16 character (128 bits) at a time
         Mbv = BitVector(textstring=M_str)
-        for i in range(0, len(Mbv), 8):
-            M_block = Mbv[i:i+8]
+        for i in range(0, len(Mbv), 128):
+            M_block = Mbv[i:i+128]
 
             while(len(M_block) < 128):
                 M_block = M_block + nline;
@@ -105,7 +106,8 @@ class RSADuck:
             M_block.pad_from_left(128)
 
             C = pow(int(M_block), s.e, key.n)
-            EC.append(C)
+            EC.append(BitVector(intVal=C, size=256))
+            # each element in EC is 256 bits
 
         return EC
 
@@ -117,7 +119,8 @@ class RSADuck:
     #  C is message encrypted with public key
     #  C^k.d mod k.n, k.d is private exponent
     #
-    def decrypt_with_privatekey(s, C, key):
+    def decrypt_with_privatekey(s, C_str, key, p, q):
+        print "Decrypting.."
         # we need to know prime factor p, q of modulus n (n = p*q)
         # C^d is congruent to C mod n
         # unlocker must have key with d that is f(phi(n)), phi(n) is f(p,q), where
@@ -126,28 +129,51 @@ class RSADuck:
         # n = p*q
         # d = MI(phi)
 
-        # challenge is to find p and q (?)
+        DM = []
+        # read 32 character (256 bits) at a time
+        Cbv = BitVector(textstring=C_str)
+        for i in range(0, len(Cbv), 256):
+            C = int(Cbv[i:i+256])
 
-        Vp = pow(C, d, p)
-        Vq = pow(C, d, q)
+            Vp = pow(C, key.d, p)
+            Vq = pow(C, key.d, q)
 
-        Xp = q*MI(q,p)
-        Xq = p*MI(p, q)
-        C_raise_d = (Vp*Xp + Vq*Xq) % n 
+            qbv = BitVector(intVal=q)
+            pbv = BitVector(intVal=p)
+
+
+            Xp = int(qbv.multiplicative_inverse(pbv))*int(qbv)
+            Xq = int(pbv.multiplicative_inverse(qbv))*int(pbv)
+            C_raise_d = (Vp*Xp + Vq*Xq) % key.n 
+            DM.append(BitVector(intVal=C_raise_d, size=256))
+
+        return DM
 
     def get_keys(s):
         return (PrivateKey(s.d, s.n), PublicKey(s.e, s.n))
 
+    def getPQ(self):
+        return {"p": self.p, "q": self.q}
 
+
+def jsonwrite(js, filename):
+    f = open(filename, "w")
+    f.write(json.dumps(js))
+    f.close()
+
+def jsonread(js, filename):
+    f = open(filename, "w")
+    L = f.read()
+    f.close()
+    return json.loads(L)
 #
-# blocksize is size in bit per block in block list
+# block is is list of bitvector
 #
-def fwrite(blocklist, filename, blocksize=128):
+def fwrite(blocklist, filename):
     strbuf = ""
     f = open(filename, "w")
     for block in blocklist:
-        bv = BitVector(intVal= block, size=blocksize)
-        tmp = bv.get_text_from_bitvector()
+        tmp = block.get_text_from_bitvector()
         f.write(tmp)
         strbuf = strbuf + tmp
     f.close()
@@ -158,10 +184,15 @@ if __name__ == "__main__":
 
     R = RSADuck(e=3)
     private, public = R.get_keys()
+    PQPair = R.getPQ()
+    private.toFile("private.json")
+    public.toFile("public.json")
+    jsonwrite(PQPair, "pq.json")
 
-    private.toFile("private.jkey")
-    public.toFile("public.jkey")
+    eblob = R.encrypt_with_publickey("HelloWorld", public)
+    enctxt = fwrite(eblob, "test_enc.txt")
+    
+    dblob = R.decrypt_with_privatekey(enctxt, private, PQPair['p'], PQPair['q'])
+    dectxt = fwrite(dblob, "test_dec.txt")
 
-    eblob = R.encrypt_with_publickey("M", public)
-    enctxt = fwrite(eblob, "test_enc.txt", 256)
-    print enctxt
+    print dectxt
