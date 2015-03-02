@@ -156,13 +156,12 @@ def fwrite(blocklist, filename, blocksize=128):
 
 if __name__ == "__main__":
 
-
-    R = RSADuck()
+    R = RSADuck(e=3)
     private, public = R.get_keys()
 
     private.toFile("private.jkey")
     public.toFile("public.jkey")
 
-    eblob = R.encrypt_with_publickey("xyello", public)
+    eblob = R.encrypt_with_publickey("M", public)
     enctxt = fwrite(eblob, "test_enc.txt", 256)
     print enctxt
