@@ -1,5 +1,6 @@
 #
 #  256-RSA algorithm
+#  Author: ssabpisa
 #
 from PrimeGenerator import PrimeGenerator
 from BitVector import *
@@ -145,7 +146,7 @@ class RSADuck:
             Xp = int(qbv.multiplicative_inverse(pbv))*int(qbv)
             Xq = int(pbv.multiplicative_inverse(qbv))*int(pbv)
             C_raise_d = (Vp*Xp + Vq*Xq) % key.n 
-            DM.append(BitVector(intVal=C_raise_d, size=256))
+            DM.append(BitVector(intVal=C_raise_d, size=128))
 
         return DM
 
@@ -190,7 +191,11 @@ if __name__ == "__main__":
 
     R = RSADuck()
 
-    msg = open(sys.argv[2] , "r")
+    try:
+        msg = open(sys.argv[2] , "r")
+    except IOError:
+            print "Unable to open file", sys.argv[2]
+            sys.exit(1)
 
     if(sys.argv[1] == "-e"):
         private, public = R.get_keys()
@@ -205,12 +210,14 @@ if __name__ == "__main__":
 
     elif(sys.argv[1] == "-d"):
         private = PrivateKey(0,0)
-        private.fromFile("private.json")
-        public = PublicKey(0,0)
-        public.fromFile("public.json")
-        PQPair = jsonread("pq.json")
+        try:
+            private.fromFile("private.json")
+            PQPair = jsonread("pq.json")
+        except IOError:
+            print "Make sure you have private.json and pq.json"
+            sys.exit(1)
         dblob = R.decrypt_with_privatekey(msg.read(), private, PQPair['p'], PQPair['q'])
-        dectxt = fwrite(dblob, "test_dec.txt")
+        dectxt = fwrite(dblob, sys.argv[3])
         print dectxt
 
     msg.close()
