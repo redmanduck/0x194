@@ -1,3 +1,4 @@
+#!/usr/bin/python
 #
 #  256-RSA algorithm
 #  Author: ssabpisa
@@ -91,7 +92,8 @@ class RSADuck:
     #  encrypt by calculating
     #  M^e mod n --> C
     #  key is PublicKey
-    def encrypt_with_publickey(s, M_str, key):
+    @staticmethod
+    def encrypt_with_publickey(M_str, key):
 
         EC = [] #encrypted blocks
         nline = BitVector(textstring="\n")
@@ -106,7 +108,7 @@ class RSADuck:
 
             M_block.pad_from_left(128)
 
-            C = pow(int(M_block), s.e, key.n)
+            C = pow(int(M_block), key.e, key.n)
             EC.append(BitVector(intVal=C, size=256))
             # each element in EC is 256 bits
 
@@ -120,7 +122,9 @@ class RSADuck:
     #  C is message encrypted with public key
     #  C^k.d mod k.n, k.d is private exponent
     #
-    def decrypt_with_privatekey(s, C_str, key, p, q):
+    #
+    @staticmethod
+    def decrypt_with_privatekey(C_str, key, p, q):
         print "Decrypting.."
         # we need to know prime factor p, q of modulus n (n = p*q)
         # C^d is congruent to C mod n
@@ -205,7 +209,7 @@ if __name__ == "__main__":
         public.toFile("public.json")
         jsonwrite(PQPair, "pq.json")
 
-        eblob = R.encrypt_with_publickey(msg.read(), public)
+        eblob = RSADuck.encrypt_with_publickey(msg.read(), public)
         enctxt = fwrite(eblob, sys.argv[3])
 
     elif(sys.argv[1] == "-d"):
@@ -216,9 +220,8 @@ if __name__ == "__main__":
         except IOError:
             print "Make sure you have private.json and pq.json"
             sys.exit(1)
-        dblob = R.decrypt_with_privatekey(msg.read(), private, PQPair['p'], PQPair['q'])
+        dblob = RSADuck.decrypt_with_privatekey(msg.read(), private, PQPair['p'], PQPair['q'])
         dectxt = fwrite(dblob, sys.argv[3])
         print dectxt
 
     msg.close()
-
