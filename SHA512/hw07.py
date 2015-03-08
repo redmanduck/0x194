@@ -69,7 +69,7 @@ if __name__ == '__main__':
 	h4 = 0x510e527fade682d1
 	h5 = 0x9b05688c2b3e6c1f
 	h6 = 0x1f83d9abfb41bd6b
-	h7 = 0x1f83d9abfb41bd6b
+	h7 = 0x5be0cd19137e2179
 
 	bv = BitVector(textstring = message)
 	length = bv.length()
@@ -105,7 +105,7 @@ if __name__ == '__main__':
 			#Compute Wj
 			# temp = add64(words[x-7], sig1(words[x-2]))
 			# words[x] = add64(add64(words[x-16], sig0(words[x-15])), temp)
-			words[j] = int(sig1(words[j-2]) + words[j-7] + sig0(words[j-15]) + words[j-16]) % (2**64)
+			words[j] = (sig1(words[j-2]) + words[j-7] + sig0(words[j-15]) + words[j-16]) % (2**64)
 
 	# iterate through the plaintext N times (1024 block size)
 	for i in range(0, bv4.length(), 1024):
@@ -122,9 +122,7 @@ if __name__ == '__main__':
 			Wj = words[j]
 			Kj = K[j];
 			T1 = (h + sum1(e) + Ch(e,f,g) + Kj + Wj) % (2**64)
-			print "t1 = " , hex(T1)
 			T2 = ((sum0(a)) + (Maj(a,b,c))) % (2**64)
-			print "t2 = " , hex(T2)
 			h = g
 			g = f
 			f = e
@@ -134,10 +132,13 @@ if __name__ == '__main__':
 			b = a
 			a = (T1 + T2) % (2**64)
 
-		print "h0=", hex(h0), " + ", hex(a)
 		h0,h1,h2 = (a + h0) % (2**64), (b + h1)% (2**64), (c + h2)% (2**64)
 		h3,h4,h5,h6,h7 = (d + h3)% (2**64), (e + h4)% (2**64), (f + h5)% (2**64), (g + h6)% (2**64), (h + h7)% (2**64)
 
-	print hex(h0)
-	print hex(h1)
-	print hex(h2)
+
+	H = [h0,h1,h2,h3,h4,h5,h6,h7]
+	digest = BitVector(size=0)
+	for h in H:
+		digest = digest + BitVector(intVal=h,size=64)
+
+	print digest.getHexStringFromBitVector()
