@@ -10,24 +10,20 @@ def Maj(x,y,z):
 	return (x & y) ^ (x & z) ^ (y & z)
 
 def ROTR(x, n):
-	if x < 0:
-		print x
-		raise Exception("why is x negative")
-	bv = BitVector(intVal = x)
+	bv = BitVector(intVal = x, size=64)
 	bv >> n
 	return int(bv)
 
 def SHR(x, n):
-	return x >> n
+	bv = BitVector(intVal = x , size=64)
+	bv.shift_right(n)
+	return int(bv)
 
 def sum0(x):
 	return ROTR(x,28) ^ ROTR(x,34) ^ ROTR(x, 39)
 	
 def sum1(x):
 	return ROTR(x,14) ^ ROTR(x,18) ^ ROTR(x, 41)
-
-def add64(x,y):
-	return (int(x) + int(y)) % (2**64)
 
 def sig0(x):
 	return ROTR(x, 1) ^ ROTR(x, 8) ^ SHR(x, 7)
@@ -96,11 +92,12 @@ if __name__ == '__main__':
 	print "Padded Hex Message" , hex(padmesg)
 
 	H = []
+	a,b,c,d,e,f,g,h = h0,h1,h2,h3,h4,h5,h6,h7
 
 	words = [None] * 80 # Message schedule Wj
 	
 	#populate W
-	for i in range(0, bv4.length(), 1024):
+	for i in range(0, len(bv4), 1024):
 		block = bv4[i:i+1024]
 		words[0:16] = [int(block[i:i+64]) for i in range(0,1024,64)]
 		#Apply SHA compression function (f) to update registers
@@ -108,12 +105,12 @@ if __name__ == '__main__':
 			#Compute Wj
 			# temp = add64(words[x-7], sig1(words[x-2]))
 			# words[x] = add64(add64(words[x-16], sig0(words[x-15])), temp)
-			words[j] = (sig1(words[j-2]) + words[j-7] + sig0(words[j-15]) + words[j-16]) % ( 2**64)
+			words[j] = int(sig1(words[j-2]) + words[j-7] + sig0(words[j-15]) + words[j-16]) % (2**64)
 
 	# iterate through the plaintext N times (1024 block size)
 	for i in range(0, bv4.length(), 1024):
+		h_old = h
 		a,b,c,d,e,f,g,h = h0,h1,h2,h3,h4,h5,h6,h7
-
 
 		# Apply SHA compression to update h0..h7
 		for j in range(80):
@@ -125,7 +122,9 @@ if __name__ == '__main__':
 			Wj = words[j]
 			Kj = K[j];
 			T1 = (h + sum1(e) + Ch(e,f,g) + Kj + Wj) % (2**64)
+			print "t1 = " , hex(T1)
 			T2 = ((sum0(a)) + (Maj(a,b,c))) % (2**64)
+			print "t2 = " , hex(T2)
 			h = g
 			g = f
 			f = e
@@ -135,6 +134,7 @@ if __name__ == '__main__':
 			b = a
 			a = (T1 + T2) % (2**64)
 
+		print "h0=", hex(h0), " + ", hex(a)
 		h0,h1,h2 = (a + h0) % (2**64), (b + h1)% (2**64), (c + h2)% (2**64)
 		h3,h4,h5,h6,h7 = (d + h3)% (2**64), (e + h4)% (2**64), (f + h5)% (2**64), (g + h6)% (2**64), (h + h7)% (2**64)
 
