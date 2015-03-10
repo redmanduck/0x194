@@ -3,7 +3,7 @@
 from BitVector import *
 
 def Ch(x,y,z):
-	bvxinv = ~BitVector(intVal = x)
+	bvxinv = ~BitVector(intVal = x, size=64)
 	return (x & y) ^ (int(bvxinv) & z)
 
 def Maj(x,y,z):
@@ -20,16 +20,16 @@ def SHR(x, n):
 	return int(bv)
 
 def sum0(x):
-	return ROTR(x,28) ^ ROTR(x,34) ^ ROTR(x, 39)
+	return (ROTR(x,28) ^ ROTR(x,34) ^ ROTR(x, 39))
 	
 def sum1(x):
-	return ROTR(x,14) ^ ROTR(x,18) ^ ROTR(x, 41)
+	return (ROTR(x,14) ^ ROTR(x,18) ^ ROTR(x, 41))
 
 def sig0(x):
-	return ROTR(x, 1) ^ ROTR(x, 8) ^ SHR(x, 7)
+	return (ROTR(x, 1) ^ ROTR(x, 8) ^ SHR(x, 7))
 
 def sig1(x):
-	return ROTR(x, 19) ^ ROTR(x, 61) ^ SHR(x, 6)
+	return (ROTR(x, 19) ^ ROTR(x, 61) ^ SHR(x, 6))
 
 
 K = [0x428a2f98d728ae22, 0x7137449123ef65cd, 0xb5c0fbcfec4d3b2f, 0xe9b5dba58189dbbc, 
@@ -60,7 +60,7 @@ if __name__ == '__main__':
 	# (1) the SHA512 compression function
 	# (2) the SHA-512 message schedule
 
-	message = 'abc'
+	message = 'a'
 
 	h0 = 0x6a09e667f3bcc908
 	h1 = 0xbb67ae8584caa73b
@@ -96,7 +96,7 @@ if __name__ == '__main__':
 
 	words = [None] * 80 # Message schedule Wj
 	
-	#populate W
+	#populate W message schedule
 	for i in range(0, len(bv4), 1024):
 		block = bv4[i:i+1024]
 		words[0:16] = [int(block[i:i+64]) for i in range(0,1024,64)]
@@ -113,7 +113,7 @@ if __name__ == '__main__':
 		a,b,c,d,e,f,g,h = h0,h1,h2,h3,h4,h5,h6,h7
 
 		# Apply SHA compression to update h0..h7
-		for j in range(80):
+		for j in range(0,80):
 			print "register at t =", (j-1)
 			print hex(a),hex(b),hex(c),hex(d)
 			print hex(e),hex(f),hex(g),hex(h)
@@ -132,9 +132,14 @@ if __name__ == '__main__':
 			b = a
 			a = (T1 + T2) % (2**64)
 
-		h0,h1,h2 = (a + h0) % (2**64), (b + h1)% (2**64), (c + h2)% (2**64)
-		h3,h4,h5,h6,h7 = (d + h3)% (2**64), (e + h4)% (2**64), (f + h5)% (2**64), (g + h6)% (2**64), (h + h7)% (2**64)
-
+		h0 = (a + h0) % (2**64)
+		h1 = (b + h1) % (2**64)
+		h2 = (c + h2) % (2**64)
+		h3 = (d + h3) % (2**64)
+		h4 = (e + h4) % (2**64)
+		h5 = (f + h5) % (2**64)
+		h6 = (g + h6) % (2**64)
+		h7 = (h + h7) % (2**64)
 
 	H = [h0,h1,h2,h3,h4,h5,h6,h7]
 	digest = BitVector(size=0)
