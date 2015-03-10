@@ -1,6 +1,7 @@
 #!/usr/bin/python
 #SHA512
 from BitVector import *
+import sys
 
 def Ch(x,y,z):
 	bvxinv = ~BitVector(intVal = x, size=64)
@@ -21,7 +22,7 @@ def SHR(x, n):
 
 def sum0(x):
 	return (ROTR(x,28) ^ ROTR(x,34) ^ ROTR(x, 39))
-	
+
 def sum1(x):
 	return (ROTR(x,14) ^ ROTR(x,18) ^ ROTR(x, 41))
 
@@ -32,7 +33,7 @@ def sig1(x):
 	return (ROTR(x, 19) ^ ROTR(x, 61) ^ SHR(x, 6))
 
 
-K = [0x428a2f98d728ae22, 0x7137449123ef65cd, 0xb5c0fbcfec4d3b2f, 0xe9b5dba58189dbbc, 
+K = [0x428a2f98d728ae22, 0x7137449123ef65cd, 0xb5c0fbcfec4d3b2f, 0xe9b5dba58189dbbc,
 	0x3956c25bf348b538, 0x59f111f1b605d019, 0x923f82a4af194f9b, 0xab1c5ed5da6d8118,
    0xd807aa98a3030242, 0x12835b0145706fbe, 0x243185be4ee4b28c, 0x550c7dc3d5ffb4e2,
    0x72be5d74f27b896f, 0x80deb1fe3b1696b1, 0x9bdc06a725c71235, 0xc19bf174cf692694,
@@ -53,14 +54,12 @@ K = [0x428a2f98d728ae22, 0x7137449123ef65cd, 0xb5c0fbcfec4d3b2f, 0xe9b5dba58189d
    0x28db77f523047d84, 0x32caab7b40c72493, 0x3c9ebe0a15c9bebc, 0x431d67c49c100d4c,
    0x4cc5d4becb3e42b6, 0x597f299cfc657e2a, 0x5fcb6fab3ad6faec, 0x6c44198c4a475817]
 
-if __name__ == '__main__':
+def hexdigest(message):
 	# 1024 bit message block
 	# 512 bit block cipher using msg block as key
 
 	# (1) the SHA512 compression function
 	# (2) the SHA-512 message schedule
-
-	message = 'a'
 
 	h0 = 0x6a09e667f3bcc908
 	h1 = 0xbb67ae8584caa73b
@@ -95,7 +94,7 @@ if __name__ == '__main__':
 	a,b,c,d,e,f,g,h = h0,h1,h2,h3,h4,h5,h6,h7
 
 	words = [None] * 80 # Message schedule Wj
-	
+
 	#populate W message schedule
 	for i in range(0, len(bv4), 1024):
 		block = bv4[i:i+1024]
@@ -146,4 +145,20 @@ if __name__ == '__main__':
 	for h in H:
 		digest = digest + BitVector(intVal=h,size=64)
 
-	print digest.getHexStringFromBitVector()
+	# print digest.getHexStringFromBitVector()
+	return digest.getHexStringFromBitVector()
+
+
+if __name__ == '__main__':
+	if(len(sys.argv) < 2):
+		print "Usage: hw07.py <inputfile>"
+		sys.exit(1)
+	en = open(sys.argv[1], "r")
+	mesg = en.read()
+	en.close()
+	f = open("output.txt", "w")
+	print "Hashing.."
+	f.write("Message: " + mesg + "\n")
+	mhash = hexdigest(mesg)
+	f.write("SHA512: " + mhash + "\n")
+	f.close()
