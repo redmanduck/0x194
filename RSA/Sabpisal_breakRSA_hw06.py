@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-#  Breaking RSA Encryption for small values of e 
+#  Breaking RSA Encryption for small values of e
 #  Author: ssabpisa
 #
 from Sabpisal_RSA_hw06 import *
@@ -9,7 +9,7 @@ from solve_pRoot import solve_pRoot
 # Crack the message using only Public Key
 def crack_message(C1, C2, C3, key1, key2, key3):
 	N = key1.n * key2.n * key3.n
-	
+
 	n1 = BitVector(intVal=int(N/key1.n))
 	n1_inv = n1.multiplicative_inverse(BitVector(intVal=key1.n))
 
@@ -28,7 +28,7 @@ def crack_message(C1, C2, C3, key1, key2, key3):
 	print solve_pRoot(3,S)
 
 if __name__ == "__main__":
-#	1. Generates three sets of public and private keys with e = 3	
+#	1. Generates three sets of public and private keys with e = 3
 	KeySet = []
 	plainf = open("message.txt", "r")
 	plaintext = plainf.read()
