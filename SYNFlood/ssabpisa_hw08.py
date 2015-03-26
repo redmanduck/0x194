@@ -1,3 +1,8 @@
+#
+# Homework 8
+# author: Suppatach Sabpisal
+#         ssabpisa@purdue.edu
+
 import sys
 from socket import *
 from scapy.all import *
@@ -45,6 +50,7 @@ class TcpAttack:
 
 
 captive_dns_addr = gethostbyname("ecegrid.ecn.purdue.edu")
+print "Attacking ", captive_dns_addr
 Tcp = TcpAttack('128.210.7.199', captive_dns_addr)
 # Tcp.scanTarget(70, 1000)
 
