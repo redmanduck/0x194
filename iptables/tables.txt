@@ -1,0 +1,40 @@
+> ssabpisa@grid:~$ sudo iptables -L
+
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination
+ACCEPT     tcp  --  anywhere             anywhere             tcp dpt:9000 state NEW,ESTABLISHED
+DROP       all  --  lpvinslogin03.itap.purdue.edu  anywhere
+REJECT     icmp --  anywhere             anywhere             icmp echo-request reject-with icmp-port-unreachable
+ACCEPT     tcp  --  anywhere             anywhere             tcp dpt:9000 state NEW,ESTABLISHED
+ACCEPT     tcp  --  128.46.4.0/24        anywhere             tcp dpt:ssh
+DROP       tcp  --  anywhere             anywhere             tcp dpt:ssh
+ACCEPT     tcp  --  ecegrid-thin1.ecn.purdue.edu  anywhere             tcp dpt:http
+ACCEPT     tcp  --  ecegrid-thin1.ecn.purdue.edu  anywhere             tcp dpt:https
+DROP       tcp  --  anywhere             anywhere             tcp dpt:http
+DROP       tcp  --  anywhere             anywhere             tcp dpt:8443
+ACCEPT     tcp  --  anywhere             anywhere             tcp dpt:auth
+
+Chain FORWARD (policy ACCEPT)
+target     prot opt source               destination
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination
+ACCEPT     tcp  --  anywhere             anywhere             tcp spt:9000 state ESTABLISHED
+ACCEPT     tcp  --  anywhere             anywhere             tcp spt:9000 state ESTABLISHED
+
+
+> ssabpisa@grid:~$ sudo iptables -L -t nat
+
+Chain PREROUTING (policy ACCEPT)
+target     prot opt source               destination
+REDIRECT   tcp  --  anywhere             anywhere             tcp dpt:9000 redir ports 22
+REDIRECT   tcp  --  anywhere             anywhere             tcp dpt:9000 redir ports 22
+
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination
+
+Chain POSTROUTING (policy ACCEPT)
+target     prot opt source               destination
