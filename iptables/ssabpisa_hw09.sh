@@ -1,4 +1,6 @@
 #!/bin/bash
+# author: S. Sabpisa
+# ssabpisa@purdue.edu
 #
 # Block all incoming connections from `maven.itap.purdue.edu`
 iptables -A INPUT -s 128.210.209.15 -j DROP
@@ -18,4 +20,3 @@ iptables -A INPUT -p tcp --dport 80 -j DROP
 iptables -A INPUT -p tcp --dport 8443 -j DROP
 # Permit Auth/Ident (113) used by IRC or SMTP
 iptables -A INPUT -p tcp -m tcp --dport 113 -j ACCEPT
-iptables -A INPUT -p tcp --dport -j DROP

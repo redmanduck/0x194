@@ -1,4 +1,4 @@
-**Homework 9** - Suppatach Sabpisal	
+**Homework 9** - Suppatach Sabpisal
 
 From perspective of `ecegrid.cloudapp.net`
 
@@ -47,7 +47,7 @@ From perspective of `ecegrid.cloudapp.net`
     > ssh ecegrid.cloudapp.net
     ssh shay.ecn.purdue.edu    #[3]
     > ssh ecegrid.cloudapp.net
-    
+
 **Result**: Only [2], [3] succeed. [1] failed.
 
 ### 5. Allow one IP only, to be able to access this HTTPD server.
@@ -55,15 +55,14 @@ From perspective of `ecegrid.cloudapp.net`
     sudo iptables -A INPUT -p tcp -s ecegrid-thin1.ecn.purdue.edu --dport 80 -j ACCEPT
     sudo iptables -A INPUT -p tcp -s ecegrid-thin1.ecn.purdue.edu --dport 443 -j ACCEPT
     sudo iptables -A INPUT -p tcp --dport 80 -j DROP
-    sudo iptables -A INPUT -p tcp --dport 8443 -j DROP    
+    sudo iptables -A INPUT -p tcp --dport 8443 -j DROP
 
 **Test**:
 
     ssh ecegrid.ecn.purdue.edu
     > curl ecegrid.cloudapp.net
-    
+
 
 ### 6. Permit Auth/Ident (113) used by IRC or SMTP
 
 	iptables -A INPUT -p tcp -m tcp --dport 113 -j ACCEPT
-    sudo iptables -A INPUT -p tcp --dport -j DROP
