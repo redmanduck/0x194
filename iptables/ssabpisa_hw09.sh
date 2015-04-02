@@ -5,12 +5,10 @@
 #
 # Block all incoming connections from `maven.itap.purdue.edu`
 iptables -A INPUT -s 128.210.209.15 -j DROP
-iptables -A INPUT -p icmp --icmp-type echo-request -j REJECT
 # Block all ICMP packet from ANY host
-iptables -t nat -A PREROUTING -p tcp --dport 9000 -j REDIRECT --to-port 22
+iptables -A INPUT -p icmp --icmp-type echo-request -j REJECT
 # Setup port forwarding from PORT 9000 to 22.
-iptables -A INPUT -p tcp --dport 9000 -m state --state NEW,ESTABLISHED -j ACCEPT
-iptables -A OUTPUT -p tcp --sport 9000 -m state --state ESTABLISHED -j ACCEPT
+iptables -t nat -A PREROUTING -p tcp --dport 9000 -j REDIRECT --to-port 22
 # Block 22 except from `ecn.purdue.edu` domain
 iptables -A INPUT -p tcp -s 128.46.4.0/24 --dport ssh -j ACCEPT
 iptables -A INPUT -p tcp --dport ssh -j DROP
